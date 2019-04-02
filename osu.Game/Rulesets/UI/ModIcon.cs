@@ -1,15 +1,16 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
-using OpenTK.Graphics;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Mods;
-using OpenTK;
+using osuTK;
 
 namespace osu.Game.Rulesets.UI
 {
@@ -20,15 +21,15 @@ namespace osu.Game.Rulesets.UI
 
         private const float size = 80;
 
-        public FontAwesome Icon
+        public IconUsage Icon
         {
-            get { return modIcon.Icon; }
-            set { modIcon.Icon = value; }
+            get => modIcon.Icon;
+            set => modIcon.Icon = value;
         }
 
         private readonly ModType type;
 
-        public string TooltipText { get; }
+        public virtual string TooltipText { get; }
 
         public ModIcon(Mod mod)
         {
@@ -47,7 +48,7 @@ namespace osu.Game.Rulesets.UI
                     Origin = Anchor.Centre,
                     Anchor = Anchor.Centre,
                     Size = new Vector2(size),
-                    Icon = FontAwesome.fa_osu_mod_bg,
+                    Icon = OsuIcon.ModBg,
                     Y = -6.5f,
                     Shadow = true,
                 },
@@ -79,9 +80,17 @@ namespace osu.Game.Rulesets.UI
                     backgroundColour = colours.Green;
                     highlightedColour = colours.GreenLight;
                     break;
-                case ModType.Special:
+                case ModType.Automation:
                     backgroundColour = colours.Blue;
                     highlightedColour = colours.BlueLight;
+                    break;
+                case ModType.Conversion:
+                    backgroundColour = colours.Purple;
+                    highlightedColour = colours.PurpleLight;
+                    break;
+                case ModType.Fun:
+                    backgroundColour = colours.Pink;
+                    highlightedColour = colours.PinkLight;
                     break;
             }
 
@@ -92,10 +101,7 @@ namespace osu.Game.Rulesets.UI
 
         public bool Highlighted
         {
-            get
-            {
-                return highlighted;
-            }
+            get => highlighted;
 
             set
             {

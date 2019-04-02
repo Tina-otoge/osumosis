@@ -1,17 +1,20 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
 using osu.Game.Graphics.Sprites;
 using System;
+using osu.Framework.Allocation;
+using osu.Framework.Timing;
+using osu.Game.Graphics;
 
 namespace osu.Game.Screens.Edit.Components
 {
     public class TimeInfoContainer : BottomBarContainer
     {
-        private const int count_duration = 150;
-
         private readonly OsuSpriteText trackTimer;
+
+        private IAdjustableClock adjustableClock;
 
         public TimeInfoContainer()
         {
@@ -21,18 +24,23 @@ namespace osu.Game.Screens.Edit.Components
                 {
                     Origin = Anchor.BottomLeft,
                     RelativePositionAxes = Axes.Y,
-                    TextSize = 22,
-                    FixedWidth = true,
+                    Font = OsuFont.GetFont(size: 22, fixedWidth: true),
                     Y = 0.5f,
                 }
             };
+        }
+
+        [BackgroundDependencyLoader]
+        private void load(IAdjustableClock adjustableClock)
+        {
+            this.adjustableClock = adjustableClock;
         }
 
         protected override void Update()
         {
             base.Update();
 
-            trackTimer.Text = TimeSpan.FromMilliseconds(Track.CurrentTime).ToString(@"mm\:ss\:fff");
+            trackTimer.Text = TimeSpan.FromMilliseconds(adjustableClock.CurrentTime).ToString(@"mm\:ss\:fff");
         }
     }
 }

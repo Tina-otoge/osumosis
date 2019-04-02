@@ -1,10 +1,9 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using System;
 using System.Linq;
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
@@ -58,7 +57,7 @@ namespace osu.Game.Screens.Menu
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
                     AutoSizeAxes = Axes.Both,
-                    Children = new []
+                    Children = new[]
                     {
                         lineTopLeft = new Box
                         {
@@ -103,9 +102,8 @@ namespace osu.Game.Screens.Menu
                     Origin = Anchor.Centre,
                     Text = "welcome",
                     Padding = new MarginPadding { Bottom = 10 },
-                    Font = @"Exo2.0-Light",
+                    Font = OsuFont.GetFont(weight: FontWeight.Light, size: 42),
                     Alpha = 0,
-                    TextSize = 42,
                     Spacing = new Vector2(5),
                 },
                 new CircularContainer
@@ -188,7 +186,7 @@ namespace osu.Game.Screens.Menu
             mediumRing.ResizeTo(130, 340, Easing.OutQuad);
             mediumRing.Foreground.ResizeTo(1, 880, Easing.Out);
 
-            Func<double> remainingTime = () => length - TransformDelay;
+            double remainingTime() => length - TransformDelay;
 
             using (BeginDelayedSequence(250, true))
             {

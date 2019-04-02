@@ -1,13 +1,13 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.IO;
 using osu.Game.Tests.Resources;
 using osu.Game.Beatmaps.Formats;
+using osu.Game.IO.Archives;
 
 namespace osu.Game.Tests.Beatmaps.IO
 {
@@ -17,9 +17,9 @@ namespace osu.Game.Tests.Beatmaps.IO
         [Test]
         public void TestReadBeatmaps()
         {
-            using (var osz = Resource.OpenResource("Beatmaps.241526 Soleily - Renatus.osz"))
+            using (var osz = TestResources.GetTestBeatmapStream())
             {
-                var reader = new OszArchiveReader(osz);
+                var reader = new ZipArchiveReader(osz);
                 string[] expected =
                 {
                     "Soleily - Renatus (Deif) [Platter].osu",
@@ -44,15 +44,18 @@ namespace osu.Game.Tests.Beatmaps.IO
         [Test]
         public void TestReadMetadata()
         {
-            using (var osz = Resource.OpenResource("Beatmaps.241526 Soleily - Renatus.osz"))
+            using (var osz = TestResources.GetTestBeatmapStream())
             {
-                var reader = new OszArchiveReader(osz);
+                var reader = new ZipArchiveReader(osz);
 
-                BeatmapMetadata meta;
+                Beatmap beatmap;
+
                 using (var stream = new StreamReader(reader.GetStream("Soleily - Renatus (Deif) [Platter].osu")))
-                    meta = Decoder.GetDecoder(stream).DecodeBeatmap(stream).Metadata;
+                    beatmap = Decoder.GetDecoder<Beatmap>(stream).Decode(stream);
 
-                Assert.AreEqual(241526, meta.OnlineBeatmapSetID);
+                var meta = beatmap.Metadata;
+
+                Assert.AreEqual(241526, beatmap.BeatmapInfo.BeatmapSet.OnlineBeatmapSetID);
                 Assert.AreEqual("Soleily", meta.Artist);
                 Assert.AreEqual("Soleily", meta.ArtistUnicode);
                 Assert.AreEqual("03. Renatus - Soleily 192kbps.mp3", meta.AudioFile);
@@ -69,9 +72,9 @@ namespace osu.Game.Tests.Beatmaps.IO
         [Test]
         public void TestReadFile()
         {
-            using (var osz = Resource.OpenResource("Beatmaps.241526 Soleily - Renatus.osz"))
+            using (var osz = TestResources.GetTestBeatmapStream())
             {
-                var reader = new OszArchiveReader(osz);
+                var reader = new ZipArchiveReader(osz);
                 using (var stream = new StreamReader(
                     reader.GetStream("Soleily - Renatus (Deif) [Platter].osu")))
                 {

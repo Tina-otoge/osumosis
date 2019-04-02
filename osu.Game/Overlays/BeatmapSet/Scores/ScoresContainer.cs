@@ -1,16 +1,17 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
-using OpenTK.Graphics;
-using osu.Framework.Extensions.Color4Extensions;
+using osuTK;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API.Requests;
 using System.Collections.Generic;
 using System.Linq;
+using osu.Framework.Allocation;
+using osu.Game.Beatmaps;
+using osu.Game.Online.API;
+using osu.Game.Scoring;
 
 namespace osu.Game.Overlays.BeatmapSet.Scores
 {
@@ -22,47 +23,73 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
         private readonly FillFlowContainer flow;
         private readonly DrawableTopScore topScore;
         private readonly LoadingAnimation loadingAnimation;
-        private readonly Box foreground;
 
-        private bool isLoading;
-        public bool IsLoading
+        private bool loading
         {
-            get { return isLoading; }
+            set => loadingAnimation.FadeTo(value ? 1 : 0, fade_duration);
+        }
+
+        private IEnumerable<ScoreInfo> scores;
+        private BeatmapInfo beatmap;
+
+        public IEnumerable<ScoreInfo> Scores
+        {
+            get => scores;
             set
             {
-                if (isLoading == value) return;
-                isLoading = value;
+                getScoresRequest?.Cancel();
+                scores = value;
 
-                foreground.FadeTo(isLoading ? 1 : 0, fade_duration);
-                loadingAnimation.FadeTo(isLoading ? 1 : 0, fade_duration);
+                updateDisplay();
             }
         }
 
-        private IEnumerable<OnlineScore> scores;
-        public IEnumerable<OnlineScore> Scores
+        private GetScoresRequest getScoresRequest;
+        private IAPIProvider api;
+
+        public BeatmapInfo Beatmap
         {
-            get { return scores; }
+            get => beatmap;
             set
             {
-                scores = value;
-                var scoresAmount = scores.Count();
-                if (scoresAmount == 0)
-                {
-                    CleanAllScores();
-                    return;
-                }
+                beatmap = value;
 
-                topScore.Score = scores.FirstOrDefault();
-                topScore.Show();
+                Scores = null;
 
-                flow.Clear();
-
-                if (scoresAmount < 2)
+                if (beatmap?.OnlineBeatmapID.HasValue != true)
                     return;
 
-                for (int i = 1; i < scoresAmount; i++)
-                    flow.Add(new DrawableScore(i, scores.ElementAt(i)));
+                loading = true;
+
+                getScoresRequest = new GetScoresRequest(beatmap, beatmap.Ruleset);
+                getScoresRequest.Success += r => Schedule(() => Scores = r.Scores);
+                api.Queue(getScoresRequest);
             }
+        }
+
+        private void updateDisplay()
+        {
+            loading = false;
+
+            var scoreCount = scores?.Count() ?? 0;
+
+            if (scoreCount == 0)
+            {
+                topScore.Hide();
+                flow.Clear();
+                return;
+            }
+
+            topScore.Score = scores.FirstOrDefault();
+            topScore.Show();
+
+            flow.Clear();
+
+            if (scoreCount < 2)
+                return;
+
+            for (int i = 1; i < scoreCount; i++)
+                flow.Add(new DrawableScore(i, scores.ElementAt(i)));
         }
 
         public ScoresContainer()
@@ -93,23 +120,24 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                         },
                     }
                 },
-                foreground = new Box
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Colour = Color4.Black.Opacity(0.7f),
-                    Alpha = 0,
-                },
                 loadingAnimation = new LoadingAnimation
                 {
                     Alpha = 0,
+                    Margin = new MarginPadding(20)
                 },
             };
         }
 
-        public void CleanAllScores()
+        [BackgroundDependencyLoader]
+        private void load(IAPIProvider api)
         {
-            topScore.Hide();
-            flow.Clear();
+            this.api = api;
+            updateDisplay();
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            getScoresRequest?.Cancel();
         }
     }
 }

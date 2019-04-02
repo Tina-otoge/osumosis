@@ -1,15 +1,15 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Game.Graphics;
-using OpenTK;
-using OpenTK.Graphics;
-using OpenTK.Input;
+using osu.Framework.Graphics.Sprites;
+using osuTK;
+using osuTK.Graphics;
+using osuTK.Input;
 using osu.Game.Graphics.Containers;
 
 namespace osu.Game.Screens.Select.Options
@@ -24,6 +24,8 @@ namespace osu.Game.Screens.Select.Options
 
         private readonly Box holder;
         private readonly FillFlowContainer<BeatmapOptionsButton> buttonsContainer;
+
+        public override bool BlockScreenWideMouse => false;
 
         protected override void PopIn()
         {
@@ -91,9 +93,9 @@ namespace osu.Game.Screens.Select.Options
         /// <para>Lower depth to be put on the left, and higher to be put on the right.</para>
         /// <para>Notice this is different to <see cref="Footer"/>!</para>
         /// </param>
-        public void AddButton(string firstLine, string secondLine, FontAwesome icon, Color4 colour, Action action, Key? hotkey = null, float depth = 0)
+        public void AddButton(string firstLine, string secondLine, IconUsage icon, Color4 colour, Action action, Key? hotkey = null, float depth = 0)
         {
-            buttonsContainer.Add(new BeatmapOptionsButton
+            var button = new BeatmapOptionsButton
             {
                 FirstLineText = firstLine,
                 SecondLineText = secondLine,
@@ -106,7 +108,10 @@ namespace osu.Game.Screens.Select.Options
                     action?.Invoke();
                 },
                 HotKey = hotkey
-            });
+            };
+
+            buttonsContainer.Add(button);
+            buttonsContainer.SetLayoutPosition(button, depth);
         }
     }
 }

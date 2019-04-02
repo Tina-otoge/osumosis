@@ -1,30 +1,38 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
-using osu.Game.Rulesets.Osu.OsuDifficulty;
 using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.UI;
 using System.Collections.Generic;
-using System.Linq;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Overlays.Settings;
 using osu.Framework.Input.Bindings;
-using osu.Game.Rulesets.Scoring;
-using osu.Game.Rulesets.Osu.Scoring;
 using osu.Game.Rulesets.Osu.Edit;
 using osu.Game.Rulesets.Edit;
-using osu.Game.Rulesets.Objects.Types;
-using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Rulesets.Osu.Replays;
+using osu.Game.Rulesets.Replays.Types;
+using osu.Game.Beatmaps.Legacy;
+using osu.Game.Configuration;
+using osu.Game.Rulesets.Configuration;
+using osu.Game.Rulesets.Difficulty;
+using osu.Game.Rulesets.Osu.Beatmaps;
+using osu.Game.Rulesets.Osu.Configuration;
+using osu.Game.Rulesets.Osu.Difficulty;
+using osu.Game.Scoring;
 
 namespace osu.Game.Rulesets.Osu
 {
     public class OsuRuleset : Ruleset
     {
-        public override RulesetContainer CreateRulesetContainerWith(WorkingBeatmap beatmap, bool isForCurrentRuleset) => new OsuRulesetContainer(this, beatmap, isForCurrentRuleset);
+        public override DrawableRuleset CreateDrawableRulesetWith(WorkingBeatmap beatmap) => new DrawableOsuRuleset(this, beatmap);
+        public override IBeatmapConverter CreateBeatmapConverter(IBeatmap beatmap) => new OsuBeatmapConverter(beatmap);
+        public override IBeatmapProcessor CreateBeatmapProcessor(IBeatmap beatmap) => new OsuBeatmapProcessor(beatmap);
 
         public override IEnumerable<KeyBinding> GetDefaultKeyBindings(int variant = 0) => new[]
         {
@@ -34,27 +42,54 @@ namespace osu.Game.Rulesets.Osu
             new KeyBinding(InputKey.MouseRight, OsuAction.RightButton),
         };
 
-        public override IEnumerable<BeatmapStatistic> GetBeatmapStatistics(WorkingBeatmap beatmap)
+        public override IEnumerable<Mod> ConvertLegacyMods(LegacyMods mods)
         {
-            IEnumerable<HitObject> hitObjects = beatmap.Beatmap.HitObjects;
-            IEnumerable<HitObject> circles = hitObjects.Where(d => !(d is IHasEndTime));
-            IEnumerable<HitObject> sliders = hitObjects.Where(s => s is IHasCurve);
+            if (mods.HasFlag(LegacyMods.Nightcore))
+                yield return new OsuModNightcore();
+            else if (mods.HasFlag(LegacyMods.DoubleTime))
+                yield return new OsuModDoubleTime();
 
-            return new[]
-            {
-                new BeatmapStatistic
-                {
-                    Name = @"Circle Count",
-                    Content = circles.Count().ToString(),
-                    Icon = FontAwesome.fa_circle_o
-                },
-                new BeatmapStatistic
-                {
-                    Name = @"Slider Count",
-                    Content = sliders.Count().ToString(),
-                    Icon = FontAwesome.fa_circle
-                }
-            };
+            if (mods.HasFlag(LegacyMods.Autopilot))
+                yield return new OsuModAutopilot();
+
+            if (mods.HasFlag(LegacyMods.Autoplay))
+                yield return new OsuModAutoplay();
+
+            if (mods.HasFlag(LegacyMods.Easy))
+                yield return new OsuModEasy();
+
+            if (mods.HasFlag(LegacyMods.Flashlight))
+                yield return new OsuModFlashlight();
+
+            if (mods.HasFlag(LegacyMods.HalfTime))
+                yield return new OsuModHalfTime();
+
+            if (mods.HasFlag(LegacyMods.HardRock))
+                yield return new OsuModHardRock();
+
+            if (mods.HasFlag(LegacyMods.Hidden))
+                yield return new OsuModHidden();
+
+            if (mods.HasFlag(LegacyMods.NoFail))
+                yield return new OsuModNoFail();
+
+            if (mods.HasFlag(LegacyMods.Perfect))
+                yield return new OsuModPerfect();
+
+            if (mods.HasFlag(LegacyMods.Relax))
+                yield return new OsuModRelax();
+
+            if (mods.HasFlag(LegacyMods.SpunOut))
+                yield return new OsuModSpunOut();
+
+            if (mods.HasFlag(LegacyMods.SuddenDeath))
+                yield return new OsuModSuddenDeath();
+
+            if (mods.HasFlag(LegacyMods.Target))
+                yield return new OsuModTarget();
+
+            if (mods.HasFlag(LegacyMods.TouchDevice))
+                yield return new OsuModTouchDevice();
         }
 
         public override IEnumerable<Mod> GetModsFor(ModType type)
@@ -66,67 +101,48 @@ namespace osu.Game.Rulesets.Osu
                     {
                         new OsuModEasy(),
                         new OsuModNoFail(),
-                        new MultiMod
-                        {
-                            Mods = new Mod[]
-                            {
-                                new OsuModHalfTime(),
-                                new OsuModDaycore(),
-                            },
-                        },
+                        new MultiMod(new OsuModHalfTime(), new OsuModDaycore()),
+                        new OsuModSpunOut(),
                     };
-
                 case ModType.DifficultyIncrease:
                     return new Mod[]
                     {
                         new OsuModHardRock(),
-                        new MultiMod
-                        {
-                            Mods = new Mod[]
-                            {
-                                new OsuModSuddenDeath(),
-                                new OsuModPerfect(),
-                            },
-                        },
-                        new MultiMod
-                        {
-                            Mods = new Mod[]
-                            {
-                                new OsuModDoubleTime(),
-                                new OsuModNightcore(),
-                            },
-                        },
+                        new MultiMod(new OsuModSuddenDeath(), new OsuModPerfect()),
+                        new MultiMod(new OsuModDoubleTime(), new OsuModNightcore()),
                         new OsuModHidden(),
-                        new OsuModFlashlight(),
+                        new MultiMod(new OsuModFlashlight(), new OsuModBlinds()),
                     };
-
-                case ModType.Special:
+                case ModType.Conversion:
                     return new Mod[]
                     {
-                        new OsuModRelax(),
-                        new OsuModAutopilot(),
-                        new OsuModSpunOut(),
-                        new MultiMod
-                        {
-                            Mods = new Mod[]
-                            {
-                                new OsuModAutoplay(),
-                                new ModCinema(),
-                            },
-                        },
                         new OsuModTarget(),
                     };
-
+                case ModType.Automation:
+                    return new Mod[]
+                    {
+                        new MultiMod(new OsuModAutoplay(), new ModCinema()),
+                        new OsuModRelax(),
+                        new OsuModAutopilot(),
+                    };
+                case ModType.Fun:
+                    return new Mod[]
+                    {
+                        new OsuModTransform(),
+                        new OsuModWiggle(),
+                        new OsuModGrow(),
+                        new MultiMod(new ModWindUp<OsuHitObject>(), new ModWindDown<OsuHitObject>()),
+                    };
                 default:
                     return new Mod[] { };
             }
         }
 
-        public override Drawable CreateIcon() => new SpriteIcon { Icon = FontAwesome.fa_osu_osu_o };
+        public override Drawable CreateIcon() => new SpriteIcon { Icon = OsuIcon.RulesetOsu };
 
-        public override DifficultyCalculator CreateDifficultyCalculator(Beatmap beatmap, Mod[] mods = null) => new OsuDifficultyCalculator(beatmap, mods);
+        public override DifficultyCalculator CreateDifficultyCalculator(WorkingBeatmap beatmap) => new OsuDifficultyCalculator(this, beatmap);
 
-        public override PerformanceCalculator CreatePerformanceCalculator(Beatmap beatmap, Score score) => new OsuPerformanceCalculator(this, beatmap, score);
+        public override PerformanceCalculator CreatePerformanceCalculator(WorkingBeatmap beatmap, ScoreInfo score) => new OsuPerformanceCalculator(this, beatmap, score);
 
         public override HitObjectComposer CreateHitObjectComposer() => new OsuHitObjectComposer(this);
 
@@ -134,11 +150,15 @@ namespace osu.Game.Rulesets.Osu
 
         public override string ShortName => "osu";
 
-        public override SettingsSubsection CreateSettings() => new OsuSettings();
+        public override RulesetSettingsSubsection CreateSettings() => new OsuSettingsSubsection(this);
 
-        public override int LegacyID => 0;
+        public override int? LegacyID => 0;
 
-        public OsuRuleset(RulesetInfo rulesetInfo)
+        public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new OsuReplayFrame();
+
+        public override IRulesetConfigManager CreateConfig(SettingsStore settings) => new OsuRulesetConfigManager(settings, RulesetInfo);
+
+        public OsuRuleset(RulesetInfo rulesetInfo = null)
             : base(rulesetInfo)
         {
         }

@@ -1,12 +1,12 @@
-// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics.Backgrounds;
-using OpenTK.Graphics;
+using osuTK.Graphics;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Framework.Audio.Track;
 
@@ -30,7 +30,7 @@ namespace osu.Game.Rulesets.Taiko.Objects.Drawables.Pieces
         /// </summary>
         public override Color4 AccentColour
         {
-            get { return base.AccentColour; }
+            get => base.AccentColour;
             set
             {
                 base.AccentColour = value;
@@ -46,7 +46,7 @@ namespace osu.Game.Rulesets.Taiko.Objects.Drawables.Pieces
         /// </summary>
         public override bool KiaiMode
         {
-            get { return base.KiaiMode; }
+            get => base.KiaiMode;
             set
             {
                 base.KiaiMode = value;

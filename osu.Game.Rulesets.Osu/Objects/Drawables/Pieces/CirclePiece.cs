@@ -1,22 +1,23 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
-using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Sprites;
-using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Bindings;
-using OpenTK;
+using osu.Game.Skinning;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Objects.Drawables.Pieces
 {
     public class CirclePiece : Container, IKeyBindingHandler<OsuAction>
     {
-        private readonly Sprite disc;
+        // IsHovered is used
+        public override bool HandlePositionalInput => true;
 
         public Func<bool> Hit;
+
+        public OsuAction? HitAction;
 
         public CirclePiece()
         {
@@ -27,26 +28,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Pieces
             Anchor = Anchor.Centre;
             Origin = Anchor.Centre;
 
-            Children = new Drawable[]
-            {
-                disc = new Sprite
-                {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre
-                },
-                new TrianglesPiece
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Blending = BlendingMode.Additive,
-                    Alpha = 0.5f,
-                }
-            };
-        }
-
-        [BackgroundDependencyLoader]
-        private void load(TextureStore textures)
-        {
-            disc.Texture = textures.Get(@"Play/osu/disc");
+            InternalChild = new SkinnableDrawable("Play/osu/hitcircle", _ => new DefaultCirclePiece());
         }
 
         public bool OnPressed(OsuAction action)
@@ -55,7 +37,13 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Pieces
             {
                 case OsuAction.LeftButton:
                 case OsuAction.RightButton:
-                    return IsHovered && (Hit?.Invoke() ?? false);
+                    if (IsHovered && (Hit?.Invoke() ?? false))
+                    {
+                        HitAction = action;
+                        return true;
+                    }
+
+                    break;
             }
 
             return false;

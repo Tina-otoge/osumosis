@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -15,6 +15,8 @@ namespace osu.Game.Graphics.Containers
         private readonly Container content = new Container { RelativeSizeAxes = Axes.Both };
 
         protected override Container<Drawable> Content => content;
+
+        protected virtual HoverClickSounds CreateHoverClickSounds(HoverSampleSet sampleSet) => new HoverClickSounds(sampleSet);
 
         public OsuClickableContainer(HoverSampleSet sampleSet = HoverSampleSet.Normal)
         {
@@ -33,7 +35,7 @@ namespace osu.Game.Graphics.Containers
             InternalChildren = new Drawable[]
             {
                 content,
-                new HoverClickSounds(sampleSet)
+                CreateHoverClickSounds(sampleSet)
             };
         }
     }

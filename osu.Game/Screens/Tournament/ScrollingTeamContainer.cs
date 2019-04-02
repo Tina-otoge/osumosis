@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
@@ -13,9 +13,9 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Threading;
-using OpenTK;
-using OpenTK.Graphics;
 using osu.Game.Screens.Tournament.Teams;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Tournament
 {
@@ -84,9 +84,10 @@ namespace osu.Game.Screens.Tournament
         }
 
         private ScrollState _scrollState;
+
         private ScrollState scrollState
         {
-            get { return _scrollState; }
+            get => _scrollState;
 
             set
             {
@@ -118,16 +119,18 @@ namespace osu.Game.Screens.Tournament
                         if (!Children.Any())
                             break;
 
-                        Drawable closest = null;
+                        ScrollingTeam closest = null;
 
                         foreach (var c in Children)
                         {
-                            if (!(c is ScrollingTeam))
+                            var stc = c as ScrollingTeam;
+
+                            if (stc == null)
                                 continue;
 
                             if (closest == null)
                             {
-                                closest = c;
+                                closest = stc;
                                 continue;
                             }
 
@@ -135,14 +138,15 @@ namespace osu.Game.Screens.Tournament
                             float lastOffset = Math.Abs(closest.Position.X + closest.DrawWidth / 2f - DrawWidth / 2f);
 
                             if (o < lastOffset)
-                                closest = c;
+                                closest = stc;
                         }
 
                         Trace.Assert(closest != null, "closest != null");
 
+                        // ReSharper disable once PossibleNullReferenceException
                         offset += DrawWidth / 2f - (closest.Position.X + closest.DrawWidth / 2f);
 
-                        ScrollingTeam st = closest as ScrollingTeam;
+                        ScrollingTeam st = closest;
 
                         availableTeams.RemoveAll(at => at == st.Team);
 
@@ -323,9 +327,10 @@ namespace osu.Game.Screens.Tournament
             private readonly Box outline;
 
             private bool selected;
+
             public bool Selected
             {
-                get { return selected; }
+                get => selected;
 
                 set
                 {

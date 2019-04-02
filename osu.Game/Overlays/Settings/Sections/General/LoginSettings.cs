@@ -1,24 +1,25 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Primitives;
 using osu.Framework.Graphics.UserInterface;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Online.API;
-using OpenTK;
-using osu.Framework.Input;
+using osuTK;
 using osu.Game.Users;
 using System.ComponentModel;
 using osu.Game.Graphics;
-using OpenTK.Graphics;
+using osuTK.Graphics;
 using osu.Framework.Extensions.Color4Extensions;
-
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Input.Events;
+using osu.Game.Graphics.Containers;
+using RectangleF = osu.Framework.Graphics.Primitives.RectangleF;
 using Container = osu.Framework.Graphics.Containers.Container;
 
 namespace osu.Game.Overlays.Settings.Sections.General
@@ -41,7 +42,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
 
         public bool Bounding
         {
-            get { return bounding; }
+            get => bounding;
             set
             {
                 bounding = value;
@@ -58,14 +59,14 @@ namespace osu.Game.Overlays.Settings.Sections.General
         }
 
         [BackgroundDependencyLoader(permitNulls: true)]
-        private void load(OsuColour colours, APIAccess api)
+        private void load(OsuColour colours, IAPIProvider api)
         {
             this.colours = colours;
 
             api?.Register(this);
         }
 
-        public void APIStateChanged(APIAccess api, APIState state)
+        public void APIStateChanged(IAPIProvider api, APIState state)
         {
             form = null;
 
@@ -78,31 +79,38 @@ namespace osu.Game.Overlays.Settings.Sections.General
                         {
                             Text = "ACCOUNT",
                             Margin = new MarginPadding { Bottom = 5 },
-                            Font = @"Exo2.0-Black",
+                            Font = OsuFont.GetFont(weight: FontWeight.Black),
                         },
-                        form = new LoginForm()
+                        form = new LoginForm
+                        {
+                            RequestHide = RequestHide
+                        }
                     };
                     break;
                 case APIState.Failing:
-                    Children = new Drawable[]
-                    {
-                        new OsuSpriteText
-                        {
-                            Text = "Connection failing :(",
-                        },
-                    };
-                    break;
                 case APIState.Connecting:
+                    LinkFlowContainer linkFlow;
+
                     Children = new Drawable[]
                     {
-                        new OsuSpriteText
+                        new LoadingAnimation
                         {
-                            Anchor = Anchor.Centre,
-                            Origin = Anchor.Centre,
-                            Text = "Connecting...",
+                            State = Visibility.Visible,
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                        },
+                        linkFlow = new LinkFlowContainer
+                        {
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            TextAnchor = Anchor.TopCentre,
+                            AutoSizeAxes = Axes.Both,
+                            Text = state == APIState.Failing ? "Connection is failing, will attempt to reconnect... " : "Attempting to connect... ",
                             Margin = new MarginPadding { Top = 10, Bottom = 10 },
                         },
                     };
+
+                    linkFlow.AddLink("cancel", api.Logout, string.Empty);
                     break;
                 case APIState.Online:
                     Children = new Drawable[]
@@ -127,8 +135,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
                                             Anchor = Anchor.Centre,
                                             Origin = Anchor.Centre,
                                             Text = "Signed in",
-                                            TextSize = 18,
-                                            Font = @"Exo2.0-Bold",
+                                            Font = OsuFont.GetFont(size: 18, weight: FontWeight.Bold),
                                             Margin = new MarginPadding { Top = 5, Bottom = 5 },
                                         },
                                     },
@@ -145,9 +152,9 @@ namespace osu.Game.Overlays.Settings.Sections.General
 
                     panel.Status.BindTo(api.LocalUser.Value.Status);
 
-                    dropdown.Current.ValueChanged += newValue =>
+                    dropdown.Current.ValueChanged += action =>
                     {
-                        switch (newValue)
+                        switch (action.NewValue)
                         {
                             case UserAction.Online:
                                 api.LocalUser.Value.Status.Value = new UserStatusOnline();
@@ -176,19 +183,21 @@ namespace osu.Game.Overlays.Settings.Sections.General
 
         public override bool AcceptsFocus => true;
 
-        protected override bool OnClick(InputState state) => true;
+        protected override bool OnClick(ClickEvent e) => true;
 
-        protected override void OnFocus(InputState state)
+        protected override void OnFocus(FocusEvent e)
         {
             if (form != null) GetContainingInputManager().ChangeFocus(form);
-            base.OnFocus(state);
+            base.OnFocus(e);
         }
 
         private class LoginForm : FillFlowContainer
         {
             private TextBox username;
             private TextBox password;
-            private APIAccess api;
+            private IAPIProvider api;
+
+            public Action RequestHide;
 
             private void performLogin()
             {
@@ -197,7 +206,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
             }
 
             [BackgroundDependencyLoader(permitNulls: true)]
-            private void load(APIAccess api, OsuConfigManager config)
+            private void load(IAPIProvider api, OsuConfigManager config, AccountCreationOverlay accountCreation)
             {
                 this.api = api;
                 Direction = FillDirection.Vertical;
@@ -208,26 +217,26 @@ namespace osu.Game.Overlays.Settings.Sections.General
                 {
                     username = new OsuTextBox
                     {
-                        PlaceholderText = "Username",
+                        PlaceholderText = "email address",
                         RelativeSizeAxes = Axes.X,
-                        Text = api?.Username ?? string.Empty,
+                        Text = api?.ProvidedUsername ?? string.Empty,
                         TabbableContentContainer = this
                     },
                     password = new OsuPasswordTextBox
                     {
-                        PlaceholderText = "Password",
+                        PlaceholderText = "password",
                         RelativeSizeAxes = Axes.X,
                         TabbableContentContainer = this,
                         OnCommit = (sender, newText) => performLogin()
                     },
                     new SettingsCheckbox
                     {
-                        LabelText = "Remember username",
+                        LabelText = "Remember email address",
                         Bindable = config.GetBindable<bool>(OsuSetting.SaveUsername),
                     },
                     new SettingsCheckbox
                     {
-                        LabelText = "Stay logged in",
+                        LabelText = "Stay signed in",
                         Bindable = config.GetBindable<bool>(OsuSetting.SavePassword),
                     },
                     new SettingsButton
@@ -237,17 +246,21 @@ namespace osu.Game.Overlays.Settings.Sections.General
                     },
                     new SettingsButton
                     {
-                        Text = "Register new account",
-                        //Action = registerLink
+                        Text = "Register",
+                        Action = () =>
+                        {
+                            RequestHide();
+                            accountCreation.Show();
+                        }
                     }
                 };
             }
 
             public override bool AcceptsFocus => true;
 
-            protected override bool OnClick(InputState state) => true;
+            protected override bool OnClick(ClickEvent e) => true;
 
-            protected override void OnFocus(InputState state)
+            protected override void OnFocus(FocusEvent e)
             {
                 Schedule(() => { GetContainingInputManager().ChangeFocus(string.IsNullOrEmpty(username.Text) ? username : password); });
             }
@@ -265,6 +278,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
                 {
                     var h = Header as UserDropdownHeader;
                     if (h == null) return;
+
                     h.StatusColour = value;
                 }
             }
@@ -323,12 +337,10 @@ namespace osu.Game.Overlays.Settings.Sections.General
                 public const float LABEL_LEFT_MARGIN = 20;
 
                 private readonly SpriteIcon statusIcon;
+
                 public Color4 StatusColour
                 {
-                    set
-                    {
-                        statusIcon.FadeColour(value, 500, Easing.OutQuint);
-                    }
+                    set => statusIcon.FadeColour(value, 500, Easing.OutQuint);
                 }
 
                 public UserDropdownHeader()
@@ -351,7 +363,7 @@ namespace osu.Game.Overlays.Settings.Sections.General
                     {
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,
-                        Icon = FontAwesome.fa_circle_o,
+                        Icon = FontAwesome.Regular.Circle,
                         Size = new Vector2(14),
                     });
 
@@ -369,10 +381,13 @@ namespace osu.Game.Overlays.Settings.Sections.General
         private enum UserAction
         {
             Online,
+
             [Description(@"Do not disturb")]
             DoNotDisturb,
+
             [Description(@"Appear offline")]
             AppearOffline,
+
             [Description(@"Sign out")]
             SignOut,
         }

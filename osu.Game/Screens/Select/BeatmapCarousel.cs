@@ -1,181 +1,222 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
+using osuTK;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Game.Beatmaps.Drawables;
 using osu.Game.Configuration;
-using osu.Framework.Input;
-using OpenTK.Input;
+using osuTK.Input;
 using osu.Framework.MathUtils;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
+using osu.Framework.Caching;
 using osu.Framework.Threading;
-using osu.Framework.Configuration;
+using osu.Framework.Extensions.IEnumerableExtensions;
+using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Cursor;
+using osu.Game.Screens.Select.Carousel;
 
 namespace osu.Game.Screens.Select
 {
     public class BeatmapCarousel : OsuScrollContainer
     {
-        public BeatmapInfo SelectedBeatmap => selectedPanel?.Beatmap;
+        /// <summary>
+        /// Triggered when the <see cref="BeatmapSets"/> loaded change and are completely loaded.
+        /// </summary>
+        public Action BeatmapSetsChanged;
 
-        public override bool HandleInput => AllowSelection;
+        /// <summary>
+        /// The currently selected beatmap.
+        /// </summary>
+        public BeatmapInfo SelectedBeatmap => selectedBeatmap?.Beatmap;
 
-        public Action BeatmapsChanged;
+        private CarouselBeatmap selectedBeatmap => selectedBeatmapSet?.Beatmaps.FirstOrDefault(s => s.State.Value == CarouselItemState.Selected);
 
-        public IEnumerable<BeatmapSetInfo> Beatmaps
+        /// <summary>
+        /// The currently selected beatmap set.
+        /// </summary>
+        public BeatmapSetInfo SelectedBeatmapSet => selectedBeatmapSet?.BeatmapSet;
+
+        private CarouselBeatmapSet selectedBeatmapSet;
+
+        /// <summary>
+        /// Raised when the <see cref="SelectedBeatmap"/> is changed.
+        /// </summary>
+        public Action<BeatmapInfo> SelectionChanged;
+
+        public override bool HandleNonPositionalInput => AllowSelection;
+        public override bool HandlePositionalInput => AllowSelection;
+
+        /// <summary>
+        /// Whether carousel items have completed asynchronously loaded.
+        /// </summary>
+        public bool BeatmapSetsLoaded { get; private set; }
+
+        private IEnumerable<CarouselBeatmapSet> beatmapSets => root.Children.OfType<CarouselBeatmapSet>();
+
+        public IEnumerable<BeatmapSetInfo> BeatmapSets
         {
-            get { return groups.Select(g => g.BeatmapSet); }
-            set
+            get => beatmapSets.Select(g => g.BeatmapSet);
+            set => loadBeatmapSets(() => value);
+        }
+
+        public void LoadBeatmapSetsFromManager(BeatmapManager manager) => loadBeatmapSets(manager.GetAllUsableBeatmapSetsEnumerable);
+
+        private void loadBeatmapSets(Func<IEnumerable<BeatmapSetInfo>> beatmapSets)
+        {
+            CarouselRoot newRoot = new CarouselRoot(this);
+
+            Task.Run(() =>
             {
+                beatmapSets().Select(createCarouselSet).Where(g => g != null).ForEach(newRoot.AddChild);
+                newRoot.Filter(activeCriteria);
+
+                // preload drawables as the ctor overhead is quite high currently.
+                var _ = newRoot.Drawables;
+            }).ContinueWith(_ => Schedule(() =>
+            {
+                root = newRoot;
                 scrollableContent.Clear(false);
-                panels.Clear();
-                groups.Clear();
+                itemsCache.Invalidate();
+                scrollPositionCache.Invalidate();
 
-                List<BeatmapGroup> newGroups = null;
-
-                Task.Run(() =>
+                Schedule(() =>
                 {
-                    newGroups = value.Select(createGroup).Where(g => g != null).ToList();
-                    criteria.Filter(newGroups);
-                }).ContinueWith(t =>
-                {
-                    Schedule(() =>
-                    {
-                        foreach (var g in newGroups)
-                            addGroup(g);
-
-                        computeYPositions();
-                        BeatmapsChanged?.Invoke();
-                    });
+                    BeatmapSetsChanged?.Invoke();
+                    BeatmapSetsLoaded = true;
                 });
-            }
+            }));
         }
 
         private readonly List<float> yPositions = new List<float>();
+        private Cached itemsCache = new Cached();
+        private Cached scrollPositionCache = new Cached();
 
-        /// <summary>
-        /// Required for now unfortunately.
-        /// </summary>
-        private BeatmapManager manager;
+        private readonly Container<DrawableCarouselItem> scrollableContent;
 
-        private readonly Container<Panel> scrollableContent;
+        public Bindable<bool> RightClickScrollingEnabled = new Bindable<bool>();
 
-        private readonly List<BeatmapGroup> groups = new List<BeatmapGroup>();
+        public Bindable<RandomSelectAlgorithm> RandomAlgorithm = new Bindable<RandomSelectAlgorithm>();
+        private readonly List<CarouselBeatmapSet> previouslyVisitedRandomSets = new List<CarouselBeatmapSet>();
+        private readonly Stack<CarouselBeatmap> randomSelectedBeatmaps = new Stack<CarouselBeatmap>();
 
-        private Bindable<SelectionRandomType> randomType;
-        private readonly List<BeatmapGroup> seenGroups = new List<BeatmapGroup>();
-
-        private readonly List<Panel> panels = new List<Panel>();
-
-        private readonly Stack<KeyValuePair<BeatmapGroup, BeatmapPanel>> randomSelectedBeatmaps = new Stack<KeyValuePair<BeatmapGroup, BeatmapPanel>>();
-
-        private BeatmapGroup selectedGroup;
-        private BeatmapPanel selectedPanel;
+        protected List<DrawableCarouselItem> Items = new List<DrawableCarouselItem>();
+        private CarouselRoot root;
 
         public BeatmapCarousel()
         {
-            Add(new OsuContextMenuContainer
+            root = new CarouselRoot(this);
+            Child = new OsuContextMenuContainer
             {
                 RelativeSizeAxes = Axes.X,
                 AutoSizeAxes = Axes.Y,
-                Child = scrollableContent = new Container<Panel>
+                Child = scrollableContent = new Container<DrawableCarouselItem>
                 {
                     RelativeSizeAxes = Axes.X,
                 }
-            });
+            };
         }
 
-        public void RemoveBeatmap(BeatmapSetInfo beatmapSet)
+        [BackgroundDependencyLoader(permitNulls: true)]
+        private void load(OsuConfigManager config)
         {
-            Schedule(() => removeGroup(groups.Find(b => b.BeatmapSet.ID == beatmapSet.ID)));
+            config.BindWith(OsuSetting.RandomSelectAlgorithm, RandomAlgorithm);
+            config.BindWith(OsuSetting.SongSelectRightMouseScroll, RightClickScrollingEnabled);
+
+            RightClickScrollingEnabled.ValueChanged += enabled => RightMouseScrollbar = enabled.NewValue;
+            RightClickScrollingEnabled.TriggerChange();
+        }
+
+        public void RemoveBeatmapSet(BeatmapSetInfo beatmapSet)
+        {
+            Schedule(() =>
+            {
+                var existingSet = beatmapSets.FirstOrDefault(b => b.BeatmapSet.ID == beatmapSet.ID);
+
+                if (existingSet == null)
+                    return;
+
+                root.RemoveChild(existingSet);
+                itemsCache.Invalidate();
+            });
         }
 
         public void UpdateBeatmapSet(BeatmapSetInfo beatmapSet)
         {
-            // todo: this method should be smarter as to not recreate panels that haven't changed, etc.
-            var oldGroup = groups.Find(b => b.BeatmapSet.ID == beatmapSet.ID);
-
-            var newGroup = createGroup(beatmapSet);
-
-            int index = groups.IndexOf(oldGroup);
-            if (index >= 0)
-                groups.RemoveAt(index);
-
-            if (newGroup != null)
+            Schedule(() =>
             {
-                if (index >= 0)
-                    groups.Insert(index, newGroup);
-                else
-                    addGroup(newGroup);
-            }
+                CarouselBeatmapSet existingSet = beatmapSets.FirstOrDefault(b => b.BeatmapSet.ID == beatmapSet.ID);
 
-            bool hadSelection = selectedGroup == oldGroup;
+                bool hadSelection = existingSet?.State?.Value == CarouselItemState.Selected;
 
-            if (hadSelection && newGroup == null)
-                selectedGroup = null;
+                var newSet = createCarouselSet(beatmapSet);
 
-            Filter(null, false);
+                if (existingSet != null)
+                    root.RemoveChild(existingSet);
 
-            //check if we can/need to maintain our current selection.
-            if (hadSelection && newGroup != null)
-            {
-                var newSelection =
-                    newGroup.BeatmapPanels.Find(p => p.Beatmap.ID == selectedPanel?.Beatmap.ID);
-
-                if (newSelection == null && oldGroup != null && selectedPanel != null)
-                    newSelection = newGroup.BeatmapPanels[Math.Min(newGroup.BeatmapPanels.Count - 1, oldGroup.BeatmapPanels.IndexOf(selectedPanel))];
-
-                selectGroup(newGroup, newSelection);
-            }
-        }
-
-        public void SelectBeatmap(BeatmapInfo beatmap, bool animated = true)
-        {
-            if (beatmap == null || beatmap.Hidden)
-            {
-                SelectNext();
-                return;
-            }
-
-            if (beatmap == SelectedBeatmap) return;
-
-            foreach (BeatmapGroup group in groups)
-            {
-                var panel = group.BeatmapPanels.FirstOrDefault(p => p.Beatmap.Equals(beatmap));
-                if (panel != null)
+                if (newSet == null)
                 {
-                    selectGroup(group, panel, animated);
+                    itemsCache.Invalidate();
                     return;
                 }
-            }
+
+                root.AddChild(newSet);
+
+                applyActiveCriteria(false, false);
+
+                //check if we can/need to maintain our current selection.
+                if (hadSelection)
+                    select((CarouselItem)newSet.Beatmaps.FirstOrDefault(b => b.Beatmap.ID == selectedBeatmap?.Beatmap.ID) ?? newSet);
+
+                itemsCache.Invalidate();
+                Schedule(() => BeatmapSetsChanged?.Invoke());
+            });
         }
 
-        public Action<BeatmapInfo> SelectionChanged;
-
-        public Action StartRequested;
-
-        public Action<BeatmapSetInfo> DeleteRequested;
-
-        public Action<BeatmapSetInfo> RestoreRequested;
-
-        public Action<BeatmapInfo> EditRequested;
-
-        public Action<BeatmapInfo> HideDifficultyRequested;
-
-        private void selectNullBeatmap()
+        /// <summary>
+        /// Selects a given beatmap on the carousel.
+        ///
+        /// If bypassFilters is false, we will try to select another unfiltered beatmap in the same set. If the
+        /// entire set is filtered, no selection is made.
+        /// </summary>
+        /// <param name="beatmap">The beatmap to select.</param>
+        /// <param name="bypassFilters">Whether to select the beatmap even if it is filtered (i.e., not visible on carousel).</param>
+        /// <returns>True if a selection was made, False if it wasn't.</returns>
+        public bool SelectBeatmap(BeatmapInfo beatmap, bool bypassFilters = true)
         {
-            selectedGroup = null;
-            selectedPanel = null;
-            SelectionChanged?.Invoke(null);
+            if (beatmap?.Hidden != false)
+                return false;
+
+            foreach (CarouselBeatmapSet set in beatmapSets)
+            {
+                if (!bypassFilters && set.Filtered.Value)
+                    continue;
+
+                var item = set.Beatmaps.FirstOrDefault(p => p.Beatmap.Equals(beatmap));
+
+                if (item == null)
+                    // The beatmap that needs to be selected doesn't exist in this set
+                    continue;
+
+                if (!bypassFilters && item.Filtered.Value)
+                    // The beatmap exists in this set but is filtered, so look for the first unfiltered map in the set
+                    item = set.Beatmaps.FirstOrDefault(b => !b.Filtered.Value);
+
+                if (item != null)
+                {
+                    select(item);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -185,338 +226,170 @@ namespace osu.Game.Screens.Select
         /// <param name="skipDifficulties">Whether to skip individual difficulties and only increment over full groups.</param>
         public void SelectNext(int direction = 1, bool skipDifficulties = true)
         {
-            // todo: we may want to refactor and remove this as an optimisation in the future.
-            if (groups.All(g => g.State == BeatmapGroupState.Hidden))
-            {
-                selectNullBeatmap();
-                return;
-            }
+            var visibleItems = Items.Where(s => !s.Item.Filtered.Value).ToList();
 
-            int originalIndex = Math.Max(0, groups.IndexOf(selectedGroup));
+            if (!visibleItems.Any())
+                return;
+
+            DrawableCarouselItem drawable = null;
+
+            if (selectedBeatmap != null && (drawable = selectedBeatmap.Drawables.FirstOrDefault()) == null)
+                // if the selected beatmap isn't present yet, we can't correctly change selection.
+                // we can fix this by changing this method to not reference drawables / Items in the first place.
+                return;
+
+            int originalIndex = visibleItems.IndexOf(drawable);
             int currentIndex = originalIndex;
 
             // local function to increment the index in the required direction, wrapping over extremities.
-            int incrementIndex() => currentIndex = (currentIndex + direction + groups.Count) % groups.Count;
+            int incrementIndex() => currentIndex = (currentIndex + direction + visibleItems.Count) % visibleItems.Count;
 
-            // in the case we are skipping difficulties, we want to increment the index once before starting to find out new target
-            // (we don't care about the currently selected group).
-            if (skipDifficulties)
-                incrementIndex();
-
-            do
+            while (incrementIndex() != originalIndex)
             {
-                var group = groups[currentIndex];
+                var item = visibleItems[currentIndex].Item;
 
-                if (group.State == BeatmapGroupState.Hidden) continue;
+                if (item.Filtered.Value || item.State.Value == CarouselItemState.Selected) continue;
 
-                // we are only interested in non-filtered panels.
-                IEnumerable<BeatmapPanel> validPanels = group.BeatmapPanels.Where(p => !p.Filtered);
-
-                // if we are considering difficulties, we need to do a few extrea steps.
-                if (!skipDifficulties)
+                switch (item)
                 {
-                    // we want to reverse the panel order if we are searching backwards.
-                    if (direction < 0)
-                        validPanels = validPanels.Reverse();
+                    case CarouselBeatmap beatmap:
+                        if (skipDifficulties) continue;
 
-                    // if we are currently on the selected panel, let's try to find a valid difficulty before leaving to the next group.
-                    // the first valid difficulty is found by skipping to the selected panel and then one further.
-                    if (currentIndex == originalIndex)
-                        validPanels = validPanels.SkipWhile(p => p != selectedPanel).Skip(1);
+                        select(beatmap);
+                        return;
+                    case CarouselBeatmapSet set:
+                        if (skipDifficulties)
+                            select(set);
+                        else
+                            select(direction > 0 ? set.Beatmaps.First(b => !b.Filtered.Value) : set.Beatmaps.Last(b => !b.Filtered.Value));
+                        return;
                 }
-
-                var next = validPanels.FirstOrDefault();
-
-                // at this point, we can perform the selection change if we have a valid new target, else continue to increment in the specified direction.
-                if (next != null)
-                {
-                    selectGroup(group, next);
-                    return;
-                }
-            } while (incrementIndex() != originalIndex);
+            }
         }
 
-        private IEnumerable<BeatmapGroup> getVisibleGroups() => groups.Where(selectGroup => selectGroup.State != BeatmapGroupState.Hidden);
-
-        public void SelectNextRandom()
+        /// <summary>
+        /// Select the next beatmap in the random sequence.
+        /// </summary>
+        /// <returns>True if a selection could be made, else False.</returns>
+        public bool SelectNextRandom()
         {
-            if (groups.Count == 0)
-                return;
+            var visibleSets = beatmapSets.Where(s => !s.Filtered.Value).ToList();
+            if (!visibleSets.Any())
+                return false;
 
-            var visibleGroups = getVisibleGroups();
-            if (!visibleGroups.Any())
-                return;
-
-            if (selectedGroup != null)
-                randomSelectedBeatmaps.Push(new KeyValuePair<BeatmapGroup, BeatmapPanel>(selectedGroup, selectedGroup.SelectedPanel));
-
-            BeatmapGroup group;
-
-            if (randomType == SelectionRandomType.RandomPermutation)
+            if (selectedBeatmap != null)
             {
-                var notSeenGroups = visibleGroups.Except(seenGroups);
-                if (!notSeenGroups.Any())
+                randomSelectedBeatmaps.Push(selectedBeatmap);
+
+                // when performing a random, we want to add the current set to the previously visited list
+                // else the user may be "randomised" to the existing selection.
+                if (previouslyVisitedRandomSets.LastOrDefault() != selectedBeatmapSet)
+                    previouslyVisitedRandomSets.Add(selectedBeatmapSet);
+            }
+
+            CarouselBeatmapSet set;
+
+            if (RandomAlgorithm.Value == RandomSelectAlgorithm.RandomPermutation)
+            {
+                var notYetVisitedSets = visibleSets.Except(previouslyVisitedRandomSets).ToList();
+                if (!notYetVisitedSets.Any())
                 {
-                    seenGroups.Clear();
-                    notSeenGroups = visibleGroups;
+                    previouslyVisitedRandomSets.RemoveAll(s => visibleSets.Contains(s));
+                    notYetVisitedSets = visibleSets;
                 }
 
-                group = notSeenGroups.ElementAt(RNG.Next(notSeenGroups.Count()));
-                seenGroups.Add(group);
+                set = notYetVisitedSets.ElementAt(RNG.Next(notYetVisitedSets.Count));
+                previouslyVisitedRandomSets.Add(set);
             }
             else
-                group = visibleGroups.ElementAt(RNG.Next(visibleGroups.Count()));
+                set = visibleSets.ElementAt(RNG.Next(visibleSets.Count));
 
-            BeatmapPanel panel = group.BeatmapPanels[RNG.Next(group.BeatmapPanels.Count)];
-
-            selectGroup(group, panel);
+            var visibleBeatmaps = set.Beatmaps.Where(s => !s.Filtered.Value).ToList();
+            select(visibleBeatmaps[RNG.Next(visibleBeatmaps.Count)]);
+            return true;
         }
 
         public void SelectPreviousRandom()
         {
-            if (!randomSelectedBeatmaps.Any())
-                return;
-
-            var visibleGroups = getVisibleGroups();
-            if (!visibleGroups.Any())
-                return;
-
             while (randomSelectedBeatmaps.Any())
             {
-                var beatmapCoordinates = randomSelectedBeatmaps.Pop();
-                var group = beatmapCoordinates.Key;
-                if (visibleGroups.Contains(group))
+                var beatmap = randomSelectedBeatmaps.Pop();
+
+                if (!beatmap.Filtered.Value)
                 {
-                    selectGroup(group, beatmapCoordinates.Value);
+                    if (RandomAlgorithm.Value == RandomSelectAlgorithm.RandomPermutation)
+                        previouslyVisitedRandomSets.Remove(selectedBeatmapSet);
+                    select(beatmap);
                     break;
                 }
             }
         }
 
-        private FilterCriteria criteria = new FilterCriteria();
+        private void select(CarouselItem item)
+        {
+            if (!AllowSelection)
+                return;
 
-        private ScheduledDelegate filterTask;
+            if (item == null) return;
+
+            item.State.Value = CarouselItemState.Selected;
+        }
+
+        private FilterCriteria activeCriteria = new FilterCriteria();
+
+        protected ScheduledDelegate PendingFilter;
 
         public bool AllowSelection = true;
 
-        public void FlushPendingFilters()
+        public void FlushPendingFilterOperations()
         {
-            if (filterTask?.Completed == false)
-                Filter(null, false);
+            if (PendingFilter?.Completed == false)
+            {
+                applyActiveCriteria(false, false);
+                Update();
+            }
         }
 
-        public void Filter(FilterCriteria newCriteria = null, bool debounce = true)
+        public void Filter(FilterCriteria newCriteria, bool debounce = true)
         {
             if (newCriteria != null)
-                criteria = newCriteria;
+                activeCriteria = newCriteria;
 
-            Action perform = delegate
+            applyActiveCriteria(debounce, true);
+        }
+
+        private void applyActiveCriteria(bool debounce, bool scroll)
+        {
+            if (root.Children.Any() != true) return;
+
+            void perform()
             {
-                filterTask = null;
+                PendingFilter = null;
 
-                criteria.Filter(groups);
+                root.Filter(activeCriteria);
+                itemsCache.Invalidate();
+                if (scroll) scrollPositionCache.Invalidate();
+            }
 
-                var filtered = new List<BeatmapGroup>(groups);
-
-                scrollableContent.Clear(false);
-                panels.Clear();
-                groups.Clear();
-
-                foreach (var g in filtered)
-                    addGroup(g);
-
-                computeYPositions();
-
-                selectedGroup?.UpdateState();
-
-                if (selectedGroup == null || selectedGroup.State == BeatmapGroupState.Hidden)
-                    SelectNext();
-                else
-                    selectGroup(selectedGroup, selectedPanel);
-            };
-
-            filterTask?.Cancel();
-            filterTask = null;
+            PendingFilter?.Cancel();
+            PendingFilter = null;
 
             if (debounce)
-                filterTask = Scheduler.AddDelayed(perform, 250);
+                PendingFilter = Scheduler.AddDelayed(perform, 250);
             else
                 perform();
         }
 
-        public void ScrollToSelected(bool animated = true)
-        {
-            float selectedY = computeYPositions(animated);
-            ScrollTo(selectedY, animated);
-        }
+        private float? scrollTarget;
 
-        private BeatmapGroup createGroup(BeatmapSetInfo beatmapSet)
-        {
-            if (beatmapSet.Beatmaps.All(b => b.Hidden))
-                return null;
+        public void ScrollToSelected() => scrollPositionCache.Invalidate();
 
-            foreach (var b in beatmapSet.Beatmaps)
-            {
-                if (b.Metadata == null)
-                    b.Metadata = beatmapSet.Metadata;
-            }
-
-            return new BeatmapGroup(beatmapSet, manager)
-            {
-                SelectionChanged = (g, p) => selectGroup(g, p),
-                StartRequested = b => StartRequested?.Invoke(),
-                DeleteRequested = b => DeleteRequested?.Invoke(b),
-                RestoreHiddenRequested = s => RestoreRequested?.Invoke(s),
-                EditRequested = b => EditRequested?.Invoke(b),
-                HideDifficultyRequested = b => HideDifficultyRequested?.Invoke(b),
-                State = BeatmapGroupState.Collapsed
-            };
-        }
-
-        [BackgroundDependencyLoader(permitNulls: true)]
-        private void load(BeatmapManager manager, OsuConfigManager config)
-        {
-            this.manager = manager;
-
-            randomType = config.GetBindable<SelectionRandomType>(OsuSetting.SelectionRandomType);
-        }
-
-        private void addGroup(BeatmapGroup group)
-        {
-            // prevent duplicates by concurrent independent actions trying to add a group
-            if (groups.Any(g => g.BeatmapSet.ID == group.BeatmapSet.ID))
-                return;
-
-            groups.Add(group);
-            panels.Add(group.Header);
-            panels.AddRange(group.BeatmapPanels);
-        }
-
-        private void removeGroup(BeatmapGroup group)
-        {
-            if (group == null)
-                return;
-
-            if (selectedGroup == group)
-            {
-                if (getVisibleGroups().Count() == 1)
-                    selectNullBeatmap();
-                else
-                    SelectNext();
-            }
-
-            groups.Remove(group);
-            panels.Remove(group.Header);
-            foreach (var p in group.BeatmapPanels)
-                panels.Remove(p);
-
-            scrollableContent.Remove(group.Header);
-            scrollableContent.RemoveRange(group.BeatmapPanels);
-
-            computeYPositions();
-        }
-
-        /// <summary>
-        /// Computes the target Y positions for every panel in the carousel.
-        /// </summary>
-        /// <returns>The Y position of the currently selected panel.</returns>
-        private float computeYPositions(bool animated = true)
-        {
-            yPositions.Clear();
-
-            float currentY = DrawHeight / 2;
-            float selectedY = currentY;
-
-            foreach (BeatmapGroup group in groups)
-            {
-                movePanel(group.Header, group.State != BeatmapGroupState.Hidden, animated, ref currentY);
-
-                if (group.State == BeatmapGroupState.Expanded)
-                {
-                    group.Header.MoveToX(-100, 500, Easing.OutExpo);
-                    var headerY = group.Header.Position.Y;
-
-                    foreach (BeatmapPanel panel in group.BeatmapPanels)
-                    {
-                        if (panel == selectedPanel)
-                            selectedY = currentY + panel.DrawHeight / 2 - DrawHeight / 2;
-
-                        panel.MoveToX(-50, 500, Easing.OutExpo);
-
-                        bool isHidden = panel.State == PanelSelectedState.Hidden;
-
-                        //on first display we want to begin hidden under our group's header.
-                        if (isHidden || panel.Alpha == 0)
-                            panel.MoveToY(headerY);
-
-                        movePanel(panel, !isHidden, animated, ref currentY);
-                    }
-                }
-                else
-                {
-                    group.Header.MoveToX(0, 500, Easing.OutExpo);
-
-                    foreach (BeatmapPanel panel in group.BeatmapPanels)
-                    {
-                        panel.MoveToX(0, 500, Easing.OutExpo);
-                        movePanel(panel, false, animated, ref currentY);
-                    }
-                }
-            }
-
-            currentY += DrawHeight / 2;
-            scrollableContent.Height = currentY;
-
-            return selectedY;
-        }
-
-        private void movePanel(Panel panel, bool advance, bool animated, ref float currentY)
-        {
-            yPositions.Add(currentY);
-            panel.MoveToY(currentY, animated ? 750 : 0, Easing.OutExpo);
-
-            if (advance)
-                currentY += panel.DrawHeight + 5;
-        }
-
-        private void selectGroup(BeatmapGroup group, BeatmapPanel panel = null, bool animated = true)
-        {
-            try
-            {
-                if (panel == null || panel.Filtered == true)
-                    panel = group.BeatmapPanels.First(p => !p.Filtered);
-
-                if (selectedPanel == panel) return;
-
-                Trace.Assert(group.BeatmapPanels.Contains(panel), @"Selected panel must be in provided group");
-
-                if (selectedGroup != null && selectedGroup != group && selectedGroup.State != BeatmapGroupState.Hidden)
-                    selectedGroup.State = BeatmapGroupState.Collapsed;
-
-                group.State = BeatmapGroupState.Expanded;
-                group.SelectedPanel = panel;
-
-                panel.State = PanelSelectedState.Selected;
-
-                if (selectedPanel == panel) return;
-
-                selectedPanel = panel;
-                selectedGroup = group;
-
-                SelectionChanged?.Invoke(panel.Beatmap);
-            }
-            finally
-            {
-                ScrollToSelected(animated);
-            }
-        }
-
-        protected override bool OnKeyDown(InputState state, KeyDownEventArgs args)
+        protected override bool OnKeyDown(KeyDownEvent e)
         {
             int direction = 0;
             bool skipDifficulties = false;
 
-            switch (args.Key)
+            switch (e.Key)
             {
                 case Key.Up:
                     direction = -1;
@@ -535,7 +408,7 @@ namespace osu.Game.Screens.Select
             }
 
             if (direction == 0)
-                return base.OnKeyDown(state, args);
+                return base.OnKeyDown(e);
 
             SelectNext(direction, skipDifficulties);
             return true;
@@ -545,68 +418,201 @@ namespace osu.Game.Screens.Select
         {
             base.Update();
 
+            if (!itemsCache.IsValid)
+                updateItems();
+
+            if (!scrollPositionCache.IsValid)
+                updateScrollPosition();
+
             float drawHeight = DrawHeight;
 
-            // Remove all panels that should no longer be on-screen
-            scrollableContent.RemoveAll(delegate(Panel p)
-            {
-                float panelPosY = p.Position.Y;
-                bool remove = panelPosY < Current - p.DrawHeight || panelPosY > Current + drawHeight || !p.IsPresent;
-                return remove;
-            });
+            // Remove all items that should no longer be on-screen
+            scrollableContent.RemoveAll(p => p.Y < Current - p.DrawHeight || p.Y > Current + drawHeight || !p.IsPresent);
 
-            // Find index range of all panels that should be on-screen
-            Trace.Assert(panels.Count == yPositions.Count);
+            // Find index range of all items that should be on-screen
+            Trace.Assert(Items.Count == yPositions.Count);
 
-            int firstIndex = yPositions.BinarySearch(Current - Panel.MAX_HEIGHT);
+            int firstIndex = yPositions.BinarySearch(Current - DrawableCarouselItem.MAX_HEIGHT);
             if (firstIndex < 0) firstIndex = ~firstIndex;
             int lastIndex = yPositions.BinarySearch(Current + drawHeight);
-            if (lastIndex < 0)
-            {
-                lastIndex = ~lastIndex;
+            if (lastIndex < 0) lastIndex = ~lastIndex;
 
-                // Add the first panel of the last visible beatmap group to preload its data.
-                if (lastIndex != 0 && panels[lastIndex - 1] is BeatmapSetHeader)
-                    lastIndex++;
-            }
+            int notVisibleCount = 0;
 
-            // Add those panels within the previously found index range that should be displayed.
+            // Add those items within the previously found index range that should be displayed.
             for (int i = firstIndex; i < lastIndex; ++i)
             {
-                Panel panel = panels[i];
-                if (panel.State == PanelSelectedState.Hidden)
+                DrawableCarouselItem item = Items[i];
+
+                if (!item.Item.Visible)
+                {
+                    if (!item.IsPresent)
+                        notVisibleCount++;
                     continue;
+                }
+
+                float depth = i + (item is DrawableCarouselBeatmapSet ? -Items.Count : 0);
 
                 // Only add if we're not already part of the content.
-                if (!scrollableContent.Contains(panel))
+                if (!scrollableContent.Contains(item))
                 {
-                    // Makes sure headers are always _below_ panels,
+                    // Makes sure headers are always _below_ items,
                     // and depth flows downward.
-                    panel.Depth = i + (panel is BeatmapSetHeader ? panels.Count : 0);
+                    item.Depth = depth;
 
-                    switch (panel.LoadState)
+                    switch (item.LoadState)
                     {
                         case LoadState.NotLoaded:
-                            LoadComponentAsync(panel);
+                            LoadComponentAsync(item);
                             break;
                         case LoadState.Loading:
                             break;
                         default:
-                            scrollableContent.Add(panel);
+                            scrollableContent.Add(item);
                             break;
                     }
                 }
+                else
+                {
+                    scrollableContent.ChangeChildDepth(item, depth);
+                }
             }
 
-            // Update externally controlled state of currently visible panels
+            // this is not actually useful right now, but once we have groups may well be.
+            if (notVisibleCount > 50)
+                itemsCache.Invalidate();
+
+            // Update externally controlled state of currently visible items
             // (e.g. x-offset and opacity).
             float halfHeight = drawHeight / 2;
-            foreach (Panel p in scrollableContent.Children)
-                updatePanel(p, halfHeight);
+            foreach (DrawableCarouselItem p in scrollableContent.Children)
+                updateItem(p, halfHeight);
+        }
+
+        protected override void Dispose(bool isDisposing)
+        {
+            base.Dispose(isDisposing);
+
+            // aggressively dispose "off-screen" items to reduce GC pressure.
+            foreach (var i in Items)
+                i.Dispose();
+        }
+
+        private CarouselBeatmapSet createCarouselSet(BeatmapSetInfo beatmapSet)
+        {
+            if (beatmapSet.Beatmaps.All(b => b.Hidden))
+                return null;
+
+            // todo: remove the need for this.
+            foreach (var b in beatmapSet.Beatmaps)
+            {
+                if (b.Metadata == null)
+                    b.Metadata = beatmapSet.Metadata;
+            }
+
+            var set = new CarouselBeatmapSet(beatmapSet);
+
+            foreach (var c in set.Beatmaps)
+            {
+                c.State.ValueChanged += state =>
+                {
+                    if (state.NewValue == CarouselItemState.Selected)
+                    {
+                        selectedBeatmapSet = set;
+                        SelectionChanged?.Invoke(c.Beatmap);
+
+                        itemsCache.Invalidate();
+                        scrollPositionCache.Invalidate();
+                    }
+                };
+            }
+
+            return set;
         }
 
         /// <summary>
-        /// Computes the x-offset of currently visible panels. Makes the carousel appear round.
+        /// Computes the target Y positions for every item in the carousel.
+        /// </summary>
+        /// <returns>The Y position of the currently selected item.</returns>
+        private void updateItems()
+        {
+            Items = root.Drawables.ToList();
+
+            yPositions.Clear();
+
+            float currentY = DrawHeight / 2;
+            DrawableCarouselBeatmapSet lastSet = null;
+
+            scrollTarget = null;
+
+            foreach (DrawableCarouselItem d in Items)
+            {
+                if (d.IsPresent)
+                {
+                    switch (d)
+                    {
+                        case DrawableCarouselBeatmapSet set:
+                            lastSet = set;
+
+                            set.MoveToX(set.Item.State.Value == CarouselItemState.Selected ? -100 : 0, 500, Easing.OutExpo);
+                            set.MoveToY(currentY, 750, Easing.OutExpo);
+                            break;
+                        case DrawableCarouselBeatmap beatmap:
+                            if (beatmap.Item.State.Value == CarouselItemState.Selected)
+                                scrollTarget = currentY + beatmap.DrawHeight / 2 - DrawHeight / 2;
+
+                            void performMove(float y, float? startY = null)
+                            {
+                                if (startY != null) beatmap.MoveTo(new Vector2(0, startY.Value));
+                                beatmap.MoveToX(beatmap.Item.State.Value == CarouselItemState.Selected ? -50 : 0, 500, Easing.OutExpo);
+                                beatmap.MoveToY(y, 750, Easing.OutExpo);
+                            }
+
+                            Debug.Assert(lastSet != null);
+
+                            float? setY = null;
+                            if (!d.IsLoaded || beatmap.Alpha == 0) // can't use IsPresent due to DrawableCarouselItem override.
+                                // ReSharper disable once PossibleNullReferenceException (resharper broken?)
+                                setY = lastSet.Y + lastSet.DrawHeight + 5;
+
+                            if (d.IsLoaded)
+                                performMove(currentY, setY);
+                            else
+                            {
+                                float y = currentY;
+                                d.OnLoadComplete += _ => performMove(y, setY);
+                            }
+
+                            break;
+                    }
+                }
+
+                yPositions.Add(currentY);
+
+                if (d.Item.Visible)
+                    currentY += d.DrawHeight + 5;
+            }
+
+            currentY += DrawHeight / 2;
+            scrollableContent.Height = currentY;
+
+            if (BeatmapSetsLoaded && (selectedBeatmapSet == null || selectedBeatmap == null || selectedBeatmapSet.State.Value != CarouselItemState.Selected))
+            {
+                selectedBeatmapSet = null;
+                SelectionChanged?.Invoke(null);
+            }
+
+            itemsCache.Validate();
+        }
+
+        private void updateScrollPosition()
+        {
+            if (scrollTarget != null) ScrollTo(scrollTarget.Value);
+            scrollPositionCache.Validate();
+        }
+
+        /// <summary>
+        /// Computes the x-offset of currently visible items. Makes the carousel appear round.
         /// </summary>
         /// <param name="dist">
         /// Vertical distance from the center of the carousel container
@@ -624,20 +630,20 @@ namespace osu.Game.Screens.Select
         }
 
         /// <summary>
-        /// Update a panel's x position and multiplicative alpha based on its y position and
+        /// Update a item's x position and multiplicative alpha based on its y position and
         /// the current scroll position.
         /// </summary>
-        /// <param name="p">The panel to be updated.</param>
+        /// <param name="p">The item to be updated.</param>
         /// <param name="halfHeight">Half the draw height of the carousel container.</param>
-        private void updatePanel(Panel p, float halfHeight)
+        private void updateItem(DrawableCarouselItem p, float halfHeight)
         {
             var height = p.IsPresent ? p.DrawHeight : 0;
 
-            float panelDrawY = p.Position.Y - Current + height / 2;
-            float dist = Math.Abs(1f - panelDrawY / halfHeight);
+            float itemDrawY = p.Position.Y - Current + height / 2;
+            float dist = Math.Abs(1f - itemDrawY / halfHeight);
 
             // Setting the origin position serves as an additive position on top of potential
-            // local transformation we may want to apply (e.g. when a panel gets selected, we
+            // local transformation we may want to apply (e.g. when a item gets selected, we
             // may want to smoothly transform it leftwards.)
             p.OriginPosition = new Vector2(-offsetX(dist, halfHeight), 0);
 
@@ -645,6 +651,24 @@ namespace osu.Game.Screens.Select
             // additional container and setting that container's alpha) such that we can
             // layer transformations on top, with a similar reasoning to the previous comment.
             p.SetMultiplicativeAlpha(MathHelper.Clamp(1.75f - 1.5f * dist, 0, 1));
+        }
+
+        private class CarouselRoot : CarouselGroupEagerSelect
+        {
+            private readonly BeatmapCarousel carousel;
+
+            public CarouselRoot(BeatmapCarousel carousel)
+            {
+                this.carousel = carousel;
+            }
+
+            protected override void PerformSelection()
+            {
+                if (LastSelected == null)
+                    carousel.SelectNextRandom();
+                else
+                    base.PerformSelection();
+            }
         }
     }
 }

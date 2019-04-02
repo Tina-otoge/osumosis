@@ -1,34 +1,36 @@
-// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Game.Rulesets.Judgements;
+using osu.Game.Rulesets.Objects.Drawables;
 
 namespace osu.Game.Rulesets.Mania.UI
 {
-    internal class DrawableManiaJudgement : DrawableJudgement
+    public class DrawableManiaJudgement : DrawableJudgement
     {
-        public DrawableManiaJudgement(Judgement judgement)
-        : base(judgement)
+        public DrawableManiaJudgement(JudgementResult result, DrawableHitObject judgedObject)
+            : base(result, judgedObject)
         {
-            JudgementText.TextSize = 25;
         }
 
-        protected override void LoadComplete()
+        [BackgroundDependencyLoader]
+        private void load()
         {
-            base.LoadComplete();
+            if (JudgementText != null)
+                JudgementText.Font = JudgementText.Font.With(size: 25);
+        }
 
-            this.FadeInFromZero(50, Easing.OutQuint);
+        protected override double FadeInDuration => 50;
 
-            if (Judgement.IsHit)
-            {
-                this.ScaleTo(0.8f);
-                this.ScaleTo(1, 250, Easing.OutElastic);
+        protected override void ApplyHitAnimations()
+        {
+            JudgementBody.ScaleTo(0.8f);
+            JudgementBody.ScaleTo(1, 250, Easing.OutElastic);
 
-                this.Delay(50).FadeOut(200).ScaleTo(0.75f, 250);
-            }
-
-            Expire();
+            JudgementBody.Delay(FadeInDuration).ScaleTo(0.75f, 250);
+            this.Delay(FadeInDuration).FadeOut(200);
         }
     }
 }

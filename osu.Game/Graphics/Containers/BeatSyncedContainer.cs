@@ -1,9 +1,9 @@
-// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Audio.Track;
-using osu.Framework.Configuration;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
@@ -12,7 +12,7 @@ namespace osu.Game.Graphics.Containers
 {
     public class BeatSyncedContainer : Container
     {
-        protected readonly Bindable<WorkingBeatmap> Beatmap = new Bindable<WorkingBeatmap>();
+        protected readonly IBindable<WorkingBeatmap> Beatmap = new Bindable<WorkingBeatmap>();
 
         private int lastBeat;
         private TimingControlPoint lastTimingPoint;
@@ -74,9 +74,9 @@ namespace osu.Game.Graphics.Containers
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuGameBase game)
+        private void load(IBindable<WorkingBeatmap> beatmap)
         {
-            Beatmap.BindTo(game.Beatmap);
+            Beatmap.BindTo(beatmap);
         }
 
         protected virtual void OnNewBeat(int beatIndex, TimingControlPoint timingPoint, EffectControlPoint effectPoint, TrackAmplitudes amplitudes)

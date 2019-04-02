@@ -1,14 +1,14 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Graphics;
 using osu.Framework.MathUtils;
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using System;
 using osu.Framework.Graphics.Shaders;
 using osu.Framework.Graphics.Textures;
-using OpenTK.Graphics.ES30;
+using osuTK.Graphics.ES30;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Allocation;
@@ -29,8 +29,6 @@ namespace osu.Game.Graphics.Backgrounds
         /// Same behavior as Sprite's EdgeSmoothness.
         /// </summary>
         private const float edge_smoothness = 1;
-
-        public override bool HandleInput => false;
 
         public Color4 ColourLight = Color4.White;
         public Color4 ColourDark = Color4.Black;
@@ -66,7 +64,7 @@ namespace osu.Game.Graphics.Backgrounds
 
         private readonly SortedList<TriangleParticle> parts = new SortedList<TriangleParticle>(Comparer<TriangleParticle>.Default);
 
-        private Shader shader;
+        private IShader shader;
         private readonly Texture texture;
 
         public Triangles()
@@ -77,7 +75,7 @@ namespace osu.Game.Graphics.Backgrounds
         [BackgroundDependencyLoader]
         private void load(ShaderManager shaders)
         {
-            shader = shaders?.Load(VertexShaderDescriptor.TEXTURE_2, FragmentShaderDescriptor.TEXTURE_ROUNDED);
+            shader = shaders.Load(VertexShaderDescriptor.TEXTURE_2, FragmentShaderDescriptor.TEXTURE_ROUNDED);
         }
 
         protected override void LoadComplete()
@@ -88,7 +86,7 @@ namespace osu.Game.Graphics.Backgrounds
 
         public float TriangleScale
         {
-            get { return triangleScale; }
+            get => triangleScale;
             set
             {
                 float change = value / triangleScale;
@@ -112,10 +110,10 @@ namespace osu.Game.Graphics.Backgrounds
             if (CreateNewTriangles)
                 addTriangles(false);
 
-            float adjustedAlpha = HideAlphaDiscrepancies ?
+            float adjustedAlpha = HideAlphaDiscrepancies
                 // Cubically scale alpha to make it drop off more sharply.
-                (float)Math.Pow(DrawInfo.Colour.AverageColour.Linear.A, 3) :
-                1;
+                ? (float)Math.Pow(DrawColourInfo.Colour.AverageColour.Linear.A, 3)
+                : 1;
 
             float elapsedSeconds = (float)Time.Elapsed / 1000;
             // Since position is relative, the velocity needs to scale inversely with DrawHeight.
@@ -182,7 +180,6 @@ namespace osu.Game.Graphics.Backgrounds
 
         protected override DrawNode CreateDrawNode() => new TrianglesDrawNode();
 
-        private readonly TrianglesDrawNodeSharedData sharedData = new TrianglesDrawNodeSharedData();
         protected override void ApplyDrawNode(DrawNode node)
         {
             base.ApplyDrawNode(node);
@@ -192,26 +189,20 @@ namespace osu.Game.Graphics.Backgrounds
             trianglesNode.Shader = shader;
             trianglesNode.Texture = texture;
             trianglesNode.Size = DrawSize;
-            trianglesNode.Shared = sharedData;
 
             trianglesNode.Parts.Clear();
             trianglesNode.Parts.AddRange(parts);
         }
 
-        private class TrianglesDrawNodeSharedData
-        {
-            public readonly LinearBatch<TexturedVertex2D> VertexBatch = new LinearBatch<TexturedVertex2D>(100 * 3, 10, PrimitiveType.Triangles);
-        }
-
         private class TrianglesDrawNode : DrawNode
         {
-            public Shader Shader;
+            public IShader Shader;
             public Texture Texture;
-
-            public TrianglesDrawNodeSharedData Shared;
 
             public readonly List<TriangleParticle> Parts = new List<TriangleParticle>();
             public Vector2 Size;
+
+            private readonly LinearBatch<TexturedVertex2D> vertexBatch = new LinearBatch<TexturedVertex2D>(100 * 3, 10, PrimitiveType.Triangles);
 
             public override void Draw(Action<TexturedVertex2D> vertexAction)
             {
@@ -233,18 +224,25 @@ namespace osu.Game.Graphics.Backgrounds
                         Vector2Extensions.Transform(particle.Position * Size + new Vector2(-offset.X, offset.Y), DrawInfo.Matrix)
                     );
 
-                    ColourInfo colourInfo = DrawInfo.Colour;
+                    ColourInfo colourInfo = DrawColourInfo.Colour;
                     colourInfo.ApplyChild(particle.Colour);
 
                     Texture.DrawTriangle(
                         triangle,
                         colourInfo,
                         null,
-                        Shared.VertexBatch.Add,
+                        vertexBatch.AddAction,
                         Vector2.Divide(localInflationAmount, size));
                 }
 
                 Shader.Unbind();
+            }
+
+            protected override void Dispose(bool isDisposing)
+            {
+                base.Dispose(isDisposing);
+
+                vertexBatch.Dispose();
             }
         }
 

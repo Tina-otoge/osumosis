@@ -1,33 +1,49 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Linq;
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.UserInterface;
-using osu.Framework.Input;
+using osu.Framework.Input.Events;
+using osu.Framework.MathUtils;
 using osu.Game.Graphics.Sprites;
 
 namespace osu.Game.Graphics.UserInterface
 {
     public class OsuTabControl<T> : TabControl<T>
     {
+        private readonly Box strip;
+
         protected override Dropdown<T> CreateDropdown() => new OsuTabDropdown();
 
         protected override TabItem<T> CreateTabItem(T value) => new OsuTabItem(value);
+
+        protected virtual float StripWidth() => TabContainer.Children.Sum(c => c.IsPresent ? c.DrawWidth + TabContainer.Spacing.X : 0) - TabContainer.Spacing.X;
+        protected virtual float StripHeight() => 1;
 
         private static bool isEnumType => typeof(T).IsEnum;
 
         public OsuTabControl()
         {
             TabContainer.Spacing = new Vector2(10f, 0f);
+
+            AddInternal(strip = new Box
+            {
+                Anchor = Anchor.BottomLeft,
+                Origin = Anchor.BottomLeft,
+                Height = StripHeight(),
+                Colour = Color4.White.Opacity(0),
+            });
 
             if (isEnumType)
                 foreach (var val in (T[])Enum.GetValues(typeof(T)))
@@ -37,23 +53,46 @@ namespace osu.Game.Graphics.UserInterface
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
         {
-            if (accentColour == default(Color4))
+            if (accentColour == default)
                 AccentColour = colours.Blue;
         }
 
         private Color4 accentColour;
+
         public Color4 AccentColour
         {
-            get { return accentColour; }
+            get => accentColour;
             set
             {
                 accentColour = value;
-                var dropdown = Dropdown as IHasAccentColour;
-                if (dropdown != null)
+                if (Dropdown is IHasAccentColour dropdown)
                     dropdown.AccentColour = value;
                 foreach (var i in TabContainer.Children.OfType<IHasAccentColour>())
                     i.AccentColour = value;
             }
+        }
+
+        public Color4 StripColour
+        {
+            get => strip.Colour;
+            set => strip.Colour = value;
+        }
+
+        protected override TabFillFlowContainer CreateTabFlow() => new OsuTabFillFlowContainer
+        {
+            Direction = FillDirection.Full,
+            RelativeSizeAxes = Axes.Both,
+            Depth = -1,
+            Masking = true
+        };
+
+        protected override void UpdateAfterChildren()
+        {
+            base.UpdateAfterChildren();
+
+            // dont bother calculating if the strip is invisible
+            if (strip.Colour.MaxAlpha > 0)
+                strip.Width = Interpolation.ValueAt(MathHelper.Clamp(Clock.ElapsedFrameTime, 0, 1000), strip.Width, StripWidth(), 0, 500, Easing.OutQuint);
         }
 
         public class OsuTabItem : TabItem<T>, IHasAccentColour
@@ -62,13 +101,14 @@ namespace osu.Game.Graphics.UserInterface
             protected readonly Box Bar;
 
             private Color4 accentColour;
+
             public Color4 AccentColour
             {
-                get { return accentColour; }
+                get => accentColour;
                 set
                 {
                     accentColour = value;
-                    if (!Active)
+                    if (!Active.Value)
                         Text.Colour = value;
                 }
             }
@@ -87,27 +127,28 @@ namespace osu.Game.Graphics.UserInterface
                 Text.FadeColour(AccentColour, transition_length, Easing.OutQuint);
             }
 
-            protected override bool OnHover(InputState state)
+            protected override bool OnHover(HoverEvent e)
             {
-                if (!Active)
+                if (!Active.Value)
                     fadeActive();
                 return true;
             }
 
-            protected override void OnHoverLost(InputState state)
+            protected override void OnHoverLost(HoverLostEvent e)
             {
-                if (!Active)
+                if (!Active.Value)
                     fadeInactive();
             }
 
             [BackgroundDependencyLoader]
             private void load(OsuColour colours)
             {
-                if (accentColour == default(Color4))
+                if (accentColour == default)
                     AccentColour = colours.Blue;
             }
 
-            public OsuTabItem(T value) : base(value)
+            public OsuTabItem(T value)
+                : base(value)
             {
                 AutoSizeAxes = Axes.X;
                 RelativeSizeAxes = Axes.Y;
@@ -119,9 +160,8 @@ namespace osu.Game.Graphics.UserInterface
                         Margin = new MarginPadding { Top = 5, Bottom = 5 },
                         Origin = Anchor.BottomLeft,
                         Anchor = Anchor.BottomLeft,
-                        Text = (value as Enum)?.GetDescription() ?? value.ToString(),
-                        TextSize = 14,
-                        Font = @"Exo2.0-Bold", // Font should only turn bold when active?
+                        Text = (value as IHasDescription)?.Description ?? (value as Enum)?.GetDescription() ?? value.ToString(),
+                        Font = OsuFont.GetFont(size: 14)
                     },
                     Bar = new Box
                     {
@@ -134,6 +174,8 @@ namespace osu.Game.Graphics.UserInterface
                     },
                     new HoverClickSounds()
                 };
+
+                Active.BindValueChanged(active => Text.Font = Text.Font.With(Typeface.Exo, weight: active.NewValue ? FontWeight.Bold : FontWeight.Medium), true);
             }
 
             protected override void OnActivated() => fadeActive();
@@ -180,16 +222,11 @@ namespace osu.Game.Graphics.UserInterface
                 }
             }
 
-
             protected class OsuTabDropdownHeader : OsuDropdownHeader
             {
                 public override Color4 AccentColour
                 {
-                    get
-                    {
-                        return base.AccentColour;
-                    }
-
+                    get => base.AccentColour;
                     set
                     {
                         base.AccentColour = value;
@@ -217,7 +254,7 @@ namespace osu.Game.Graphics.UserInterface
                     {
                         new SpriteIcon
                         {
-                            Icon = FontAwesome.fa_ellipsis_h,
+                            Icon = FontAwesome.Solid.EllipsisH,
                             Size = new Vector2(14),
                             Origin = Anchor.Centre,
                             Anchor = Anchor.Centre,
@@ -227,18 +264,23 @@ namespace osu.Game.Graphics.UserInterface
                     Padding = new MarginPadding { Left = 5, Right = 5 };
                 }
 
-                protected override bool OnHover(InputState state)
+                protected override bool OnHover(HoverEvent e)
                 {
                     Foreground.Colour = BackgroundColour;
-                    return base.OnHover(state);
+                    return base.OnHover(e);
                 }
 
-                protected override void OnHoverLost(InputState state)
+                protected override void OnHoverLost(HoverLostEvent e)
                 {
                     Foreground.Colour = BackgroundColourHover;
-                    base.OnHoverLost(state);
+                    base.OnHoverLost(e);
                 }
             }
+        }
+
+        private class OsuTabFillFlowContainer : TabFillFlowContainer
+        {
+            protected override int Compare(Drawable x, Drawable y) => CompareReverseChildID(x, y);
         }
     }
 }

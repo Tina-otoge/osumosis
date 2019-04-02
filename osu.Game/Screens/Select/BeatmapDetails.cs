@@ -1,12 +1,11 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using System.Linq;
@@ -17,6 +16,8 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Game.Screens.Select.Details;
 using osu.Game.Beatmaps;
+using osu.Game.Graphics;
+using osu.Game.Graphics.Containers;
 
 namespace osu.Game.Screens.Select
 {
@@ -35,17 +36,19 @@ namespace osu.Game.Screens.Select
         private readonly FailRetryGraph failRetryGraph;
         private readonly DimmedLoadingAnimation loading;
 
-        private APIAccess api;
+        private IAPIProvider api;
 
         private ScheduledDelegate pendingBeatmapSwitch;
 
         private BeatmapInfo beatmap;
+
         public BeatmapInfo Beatmap
         {
-            get { return beatmap; }
+            get => beatmap;
             set
             {
                 if (value == beatmap) return;
+
                 beatmap = value;
 
                 pendingBeatmapSwitch?.Cancel();
@@ -115,18 +118,13 @@ namespace osu.Game.Screens.Select
                                         RelativeSizeAxes = Axes.X,
                                         AutoSizeAxes = Axes.Y,
                                         LayoutDuration = transition_duration,
+                                        LayoutEasing = Easing.OutQuad,
                                         Spacing = new Vector2(spacing * 2),
                                         Margin = new MarginPadding { Top = spacing * 2 },
                                         Children = new[]
                                         {
-                                            description = new MetadataSection("Description")
-                                            {
-                                                TextColour = Color4.White.Opacity(0.75f),
-                                            },
-                                            source = new MetadataSection("Source")
-                                            {
-                                                TextColour = Color4.White.Opacity(0.75f),
-                                            },
+                                            description = new MetadataSection("Description"),
+                                            source = new MetadataSection("Source"),
                                             tags = new MetadataSection("Tags"),
                                         },
                                     },
@@ -143,8 +141,7 @@ namespace osu.Game.Screens.Select
                                 new OsuSpriteText
                                 {
                                     Text = "Points of Failure",
-                                    Font = @"Exo2.0-Bold",
-                                    TextSize = 14,
+                                    Font = OsuFont.GetFont(weight: FontWeight.Bold, size: 14),
                                 },
                                 failRetryGraph = new FailRetryGraph
                                 {
@@ -163,10 +160,9 @@ namespace osu.Game.Screens.Select
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours, APIAccess api)
+        private void load(IAPIProvider api)
         {
             this.api = api;
-            tags.TextColour = colours.Yellow;
         }
 
         protected override void UpdateAfterChildren()
@@ -179,21 +175,22 @@ namespace osu.Game.Screens.Select
 
         private void updateStatistics()
         {
-            if (Beatmap == null)
+            advanced.Beatmap = Beatmap;
+            description.Text = Beatmap?.Version;
+            source.Text = Beatmap?.Metadata?.Source;
+            tags.Text = Beatmap?.Metadata?.Tags;
+
+            // metrics may have been previously fetched
+            if (Beatmap?.Metrics != null)
             {
-                clearStats();
+                updateMetrics(Beatmap.Metrics);
                 return;
             }
 
-            ratingsContainer.FadeIn(transition_duration);
-            advanced.Beatmap = Beatmap;
-            description.Text = Beatmap.Version;
-            source.Text = Beatmap.Metadata.Source;
-            tags.Text = Beatmap.Metadata.Tags;
-
-            var requestedBeatmap = Beatmap;
-            if (requestedBeatmap.Metrics == null)
+            // metrics may not be fetched but can be
+            if (Beatmap?.OnlineBeatmapID != null)
             {
+                var requestedBeatmap = Beatmap;
                 var lookup = new GetBeatmapDetailsRequest(requestedBeatmap);
                 lookup.Success += res =>
                 {
@@ -202,39 +199,34 @@ namespace osu.Game.Screens.Select
                         return;
 
                     requestedBeatmap.Metrics = res;
-                    Schedule(() => displayMetrics(res));
+                    Schedule(() => updateMetrics(res));
                 };
-                lookup.Failure += e => Schedule(() => displayMetrics(null));
-
+                lookup.Failure += e => Schedule(() => updateMetrics());
                 api.Queue(lookup);
                 loading.Show();
+                return;
             }
 
-            displayMetrics(requestedBeatmap.Metrics, false);
+            updateMetrics();
         }
 
-        private void displayMetrics(BeatmapMetrics metrics, bool failOnMissing = true)
+        private void updateMetrics(BeatmapMetrics metrics = null)
         {
             var hasRatings = metrics?.Ratings?.Any() ?? false;
             var hasRetriesFails = (metrics?.Retries?.Any() ?? false) && (metrics.Fails?.Any() ?? false);
 
-            if (failOnMissing) loading.Hide();
-
             if (hasRatings)
             {
                 ratings.Metrics = metrics;
-                ratings.FadeIn(transition_duration);
+                ratingsContainer.FadeIn(transition_duration);
             }
-            else if (failOnMissing)
+            else
             {
                 ratings.Metrics = new BeatmapMetrics
                 {
                     Ratings = new int[10],
                 };
-            }
-            else
-            {
-                ratings.FadeTo(0.25f, transition_duration);
+                ratingsContainer.FadeTo(0.25f, transition_duration);
             }
 
             if (hasRetriesFails)
@@ -242,41 +234,17 @@ namespace osu.Game.Screens.Select
                 failRetryGraph.Metrics = metrics;
                 failRetryContainer.FadeIn(transition_duration);
             }
-            else if (failOnMissing)
+            else
             {
                 failRetryGraph.Metrics = new BeatmapMetrics
                 {
                     Fails = new int[100],
                     Retries = new int[100],
                 };
+                failRetryContainer.FadeOut(transition_duration);
             }
-            else
-            {
-                failRetryContainer.FadeTo(0.25f, transition_duration);
-            }
-        }
-
-        private void clearStats()
-        {
-            description.Text = null;
-            source.Text = null;
-            tags.Text = null;
-
-            advanced.Beatmap = new BeatmapInfo
-            {
-                StarDifficulty = 0,
-                BaseDifficulty = new BeatmapDifficulty
-                {
-                    CircleSize = 0,
-                    DrainRate = 0,
-                    OverallDifficulty = 0,
-                    ApproachRate = 0,
-                },
-            };
 
             loading.Hide();
-            ratingsContainer.FadeOut(transition_duration);
-            failRetryContainer.FadeOut(transition_duration);
         }
 
         private class DetailBox : Container
@@ -314,10 +282,10 @@ namespace osu.Game.Screens.Select
             {
                 RelativeSizeAxes = Axes.X;
                 AutoSizeAxes = Axes.Y;
-                Alpha = 0;
 
                 InternalChild = textContainer = new FillFlowContainer
                 {
+                    Alpha = 0,
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
                     Spacing = new Vector2(spacing / 2),
@@ -330,14 +298,8 @@ namespace osu.Game.Screens.Select
                             Child = new OsuSpriteText
                             {
                                 Text = title,
-                                Font = @"Exo2.0-Bold",
-                                TextSize = 14,
+                                Font = OsuFont.GetFont(weight: FontWeight.Bold, size: 14),
                             },
-                        },
-                        textFlow = new TextFlowContainer
-                        {
-                            RelativeSizeAxes = Axes.X,
-                            AutoSizeAxes = Axes.Y,
                         },
                     },
                 };
@@ -353,17 +315,19 @@ namespace osu.Game.Screens.Select
                         return;
                     }
 
+                    this.FadeIn(transition_duration);
+
                     setTextAsync(value);
                 }
             }
 
             private void setTextAsync(string text)
             {
-                LoadComponentAsync(new TextFlowContainer(s => s.TextSize = 14)
+                LoadComponentAsync(new OsuTextFlowContainer(s => s.Font = s.Font.With(size: 14))
                 {
                     RelativeSizeAxes = Axes.X,
                     AutoSizeAxes = Axes.Y,
-                    Colour = textFlow.Colour,
+                    Colour = Color4.White.Opacity(0.75f),
                     Text = text
                 }, loaded =>
                 {
@@ -371,14 +335,8 @@ namespace osu.Game.Screens.Select
                     textContainer.Add(textFlow = loaded);
 
                     // fade in if we haven't yet.
-                    this.FadeIn(transition_duration);
+                    textContainer.FadeIn(transition_duration);
                 });
-            }
-
-            public Color4 TextColour
-            {
-                get { return textFlow.Colour; }
-                set { textFlow.Colour = value; }
             }
         }
 

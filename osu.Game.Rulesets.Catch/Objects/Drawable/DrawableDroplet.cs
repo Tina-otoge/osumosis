@@ -1,34 +1,42 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Game.Rulesets.Catch.Objects.Drawable.Pieces;
-using OpenTK;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Rulesets.Catch.Objects.Drawable
 {
-    public class DrawableDroplet : DrawableCatchHitObject<Droplet>
+    public class DrawableDroplet : PalpableCatchHitObject<Droplet>
     {
+        private Pulp pulp;
+
+        public override bool StaysOnPlate => false;
+
         public DrawableDroplet(Droplet h)
             : base(h)
         {
             Origin = Anchor.Centre;
-
-            Size = new Vector2(Pulp.PULP_SIZE);
-
-            AccentColour = h.ComboColour;
+            Size = new Vector2((float)CatchHitObject.OBJECT_RADIUS) / 4;
             Masking = false;
         }
 
         [BackgroundDependencyLoader]
         private void load()
         {
-            Child = new Pulp
+            AddInternal(pulp = new Pulp { Size = Size });
+        }
+
+        public override Color4 AccentColour
+        {
+            get => base.AccentColour;
+            set
             {
-                AccentColour = AccentColour,
-                Scale = new Vector2(0.8f),
-            };
+                base.AccentColour = value;
+                pulp.AccentColour = AccentColour;
+            }
         }
     }
 }

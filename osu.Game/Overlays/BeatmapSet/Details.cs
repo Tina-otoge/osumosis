@@ -1,14 +1,16 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
+using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Beatmaps;
+using osu.Game.Overlays.BeatmapSet.Buttons;
 using osu.Game.Screens.Select.Details;
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Overlays.BeatmapSet
 {
@@ -20,12 +22,14 @@ namespace osu.Game.Overlays.BeatmapSet
         private readonly UserRatings ratings;
 
         private BeatmapSetInfo beatmapSet;
+
         public BeatmapSetInfo BeatmapSet
         {
-            get { return beatmapSet; }
+            get => beatmapSet;
             set
             {
                 if (value == beatmapSet) return;
+
                 beatmapSet = value;
 
                 basic.BeatmapSet = preview.BeatmapSet = BeatmapSet;
@@ -33,17 +37,22 @@ namespace osu.Game.Overlays.BeatmapSet
         }
 
         private BeatmapInfo beatmap;
+
         public BeatmapInfo Beatmap
         {
-            get { return beatmap; }
+            get => beatmap;
             set
             {
                 if (value == beatmap) return;
-                beatmap = value;
 
-                basic.Beatmap = advanced.Beatmap = Beatmap;
-                ratings.Metrics = Beatmap.Metrics;
+                basic.Beatmap = advanced.Beatmap = beatmap = value;
+                updateDisplay();
             }
+        }
+
+        private void updateDisplay()
+        {
+            ratings.Metrics = Beatmap?.Metrics;
         }
 
         public Details()
@@ -88,7 +97,11 @@ namespace osu.Game.Overlays.BeatmapSet
             };
         }
 
-        public void StopPreview() => preview.Playing.Value = false;
+        [BackgroundDependencyLoader]
+        private void load()
+        {
+            updateDisplay();
+        }
 
         private class DetailBox : Container
         {

@@ -1,51 +1,27 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using osu.Game.Beatmaps.Legacy;
-using osu.Game.Storyboards;
+using osu.Framework.Logging;
+using osu.Game.Audio;
+using osu.Game.Beatmaps.ControlPoints;
+using osuTK.Graphics;
 
 namespace osu.Game.Beatmaps.Formats
 {
-    public abstract class LegacyDecoder : Decoder
+    public abstract class LegacyDecoder<T> : Decoder<T>
+        where T : new()
     {
-        public static void Register()
+        protected readonly int FormatVersion;
+
+        protected LegacyDecoder(int version)
         {
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v14");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v13");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v12");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v11");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v10");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v9");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v8");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v7");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v6");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v5");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v4");
-            AddDecoder<LegacyBeatmapDecoder>(@"osu file format v3");
-            // TODO: differences between versions
+            FormatVersion = version;
         }
 
-        protected int BeatmapVersion;
-        protected readonly Dictionary<string, string> Variables = new Dictionary<string, string>();
-
-        public override Decoder GetStoryboardDecoder() => new LegacyStoryboardDecoder(BeatmapVersion);
-
-        public override Beatmap DecodeBeatmap(StreamReader stream) => new LegacyBeatmap(base.DecodeBeatmap(stream));
-
-        protected override void ParseBeatmap(StreamReader stream, Beatmap beatmap)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void ParseStoryboard(StreamReader stream, Storyboard storyboard)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected void ParseContent(StreamReader stream)
+        protected override void ParseStreamInto(StreamReader stream, T output)
         {
             Section section = Section.None;
 
@@ -55,54 +31,105 @@ namespace osu.Game.Beatmaps.Formats
                 if (ShouldSkipLine(line))
                     continue;
 
-                // It's already set in ParseBeatmap... why do it again?
-                //if (line.StartsWith(@"osu file format v"))
-                //{
-                //    Beatmap.BeatmapInfo.BeatmapVersion = int.Parse(line.Substring(17));
-                //    continue;
-                //}
-
-                if (line.StartsWith(@"[") && line.EndsWith(@"]"))
+                if (line.StartsWith(@"[", StringComparison.Ordinal) && line.EndsWith(@"]", StringComparison.Ordinal))
                 {
                     if (!Enum.TryParse(line.Substring(1, line.Length - 2), out section))
-                        throw new InvalidDataException($@"Unknown osu section {line}");
+                    {
+                        Logger.Log($"Unknown section \"{line}\" in {output}");
+                        section = Section.None;
+                    }
+
                     continue;
                 }
 
-                ProcessSection(section, line);
+                try
+                {
+                    ParseLine(output, section, line);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error(e, $"Failed to process line \"{line}\" into {output}");
+                }
             }
         }
 
-        protected virtual bool ShouldSkipLine(string line)
+        protected virtual bool ShouldSkipLine(string line) => string.IsNullOrWhiteSpace(line) || line.StartsWith("//", StringComparison.Ordinal);
+
+        protected virtual void ParseLine(T output, Section section, string line)
         {
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("//"))
-                return true;
-            return false;
+            line = StripComments(line);
+
+            switch (section)
+            {
+                case Section.Colours:
+                    handleColours(output, line);
+                    return;
+            }
         }
 
-        protected abstract void ProcessSection(Section section, string line);
-
-        /// <summary>
-        /// Decodes any beatmap variables present in a line into their real values.
-        /// </summary>
-        /// <param name="line">The line which may contains variables.</param>
-        protected void DecodeVariables(ref string line)
+        protected string StripComments(string line)
         {
-            while (line.IndexOf('$') >= 0)
+            var index = line.AsSpan().IndexOf("//".AsSpan());
+            if (index > 0)
+                return line.Substring(0, index);
+
+            return line;
+        }
+
+        private bool hasComboColours;
+
+        private void handleColours(T output, string line)
+        {
+            var pair = SplitKeyVal(line);
+
+            bool isCombo = pair.Key.StartsWith(@"Combo");
+
+            string[] split = pair.Value.Split(',');
+
+            if (split.Length != 3 && split.Length != 4)
+                throw new InvalidOperationException($@"Color specified in incorrect format (should be R,G,B or R,G,B,A): {pair.Value}");
+
+            Color4 colour;
+
+            try
             {
-                string origLine = line;
-                string[] split = line.Split(',');
-                for (int i = 0; i < split.Length; i++)
+                colour = new Color4(byte.Parse(split[0]), byte.Parse(split[1]), byte.Parse(split[2]), split.Length == 4 ? byte.Parse(split[3]) : (byte)255);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException(@"Color must be specified with 8-bit integer components");
+            }
+
+            if (isCombo)
+            {
+                if (!(output is IHasComboColours tHasComboColours)) return;
+
+                if (!hasComboColours)
                 {
-                    var item = split[i];
-                    if (item.StartsWith("$") && Variables.ContainsKey(item))
-                        split[i] = Variables[item];
+                    // remove default colours.
+                    tHasComboColours.ComboColours.Clear();
+                    hasComboColours = true;
                 }
 
-                line = string.Join(",", split);
-                if (line == origLine)
-                    break;
+                tHasComboColours.ComboColours.Add(colour);
             }
+            else
+            {
+                if (!(output is IHasCustomColours tHasCustomColours)) return;
+
+                tHasCustomColours.CustomColours[pair.Key] = colour;
+            }
+        }
+
+        protected KeyValuePair<string, string> SplitKeyVal(string line, char separator = ':')
+        {
+            var split = line.Trim().Split(new[] { separator }, 2);
+
+            return new KeyValuePair<string, string>
+            (
+                split[0].Trim(),
+                split.Length > 1 ? split[1].Trim() : string.Empty
+            );
         }
 
         protected enum Section
@@ -117,6 +144,7 @@ namespace osu.Game.Beatmaps.Formats
             Colours,
             HitObjects,
             Variables,
+            Fonts
         }
 
         internal enum LegacySampleBank
@@ -150,7 +178,7 @@ namespace osu.Game.Beatmaps.Formats
             CentreRight,
             BottomLeft,
             BottomRight
-        };
+        }
 
         internal enum StoryLayer
         {
@@ -158,6 +186,26 @@ namespace osu.Game.Beatmaps.Formats
             Fail = 1,
             Pass = 2,
             Foreground = 3
+        }
+
+        internal class LegacySampleControlPoint : SampleControlPoint
+        {
+            public int CustomSampleBank;
+
+            public override SampleInfo ApplyTo(SampleInfo sampleInfo)
+            {
+                var baseInfo = base.ApplyTo(sampleInfo);
+
+                if (string.IsNullOrEmpty(baseInfo.Suffix) && CustomSampleBank > 1)
+                    baseInfo.Suffix = CustomSampleBank.ToString();
+
+                return baseInfo;
+            }
+
+            public override bool EquivalentTo(ControlPoint other)
+                => base.EquivalentTo(other)
+                   && other is LegacySampleControlPoint legacy
+                   && CustomSampleBank == legacy.CustomSampleBank;
         }
     }
 }

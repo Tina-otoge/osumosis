@@ -1,8 +1,8 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
@@ -17,9 +17,12 @@ namespace osu.Game.Graphics.Cursor
     {
         protected override ITooltip CreateTooltip() => new OsuTooltip();
 
-        public OsuTooltipContainer(CursorContainer cursor) : base(cursor)
+        public OsuTooltipContainer(CursorContainer cursor)
+            : base(cursor)
         {
         }
+
+        protected override double AppearDelay => (1 - CurrentTooltip.Alpha) * base.AppearDelay; // reduce appear delay if the tooltip is already partly visible.
 
         public class OsuTooltip : Tooltip
         {
@@ -44,8 +47,6 @@ namespace osu.Game.Graphics.Cursor
                 }
             }
 
-            private const float text_size = 16;
-
             public OsuTooltip()
             {
                 AutoSizeEasing = Easing.OutQuint;
@@ -67,9 +68,8 @@ namespace osu.Game.Graphics.Cursor
                     },
                     text = new OsuSpriteText
                     {
-                        TextSize = text_size,
                         Padding = new MarginPadding(5),
-                        Font = @"Exo2.0-Regular",
+                        Font = OsuFont.GetFont(weight: FontWeight.Regular)
                     }
                 };
             }

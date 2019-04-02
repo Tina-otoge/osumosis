@@ -1,15 +1,13 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
-using osu.Framework.Input;
-using osu.Framework.MathUtils;
+using JetBrains.Annotations;
+using osu.Framework.Input.StateChanges;
 using osu.Game.Input.Handlers;
-using OpenTK;
-using OpenTK.Input;
-using KeyboardState = osu.Framework.Input.KeyboardState;
-using MouseState = osu.Framework.Input.MouseState;
+using osu.Game.Replays;
+using osuTK;
 
 namespace osu.Game.Rulesets.Replays
 {
@@ -17,18 +15,44 @@ namespace osu.Game.Rulesets.Replays
     /// The ReplayHandler will take a replay and handle the propagation of updates to the input stack.
     /// It handles logic of any frames which *must* be executed.
     /// </summary>
-    public abstract class FramedReplayInputHandler : ReplayInputHandler
+    public abstract class FramedReplayInputHandler<TFrame> : ReplayInputHandler
+        where TFrame : ReplayFrame
     {
         private readonly Replay replay;
 
         protected List<ReplayFrame> Frames => replay.Frames;
 
-        public ReplayFrame CurrentFrame => !hasFrames ? null : Frames[currentFrameIndex];
-        public ReplayFrame NextFrame => !hasFrames ? null : Frames[nextFrameIndex];
+        public TFrame CurrentFrame
+        {
+            get
+            {
+                if (!HasFrames || !currentFrameIndex.HasValue)
+                    return null;
 
-        private int currentFrameIndex;
+                return (TFrame)Frames[currentFrameIndex.Value];
+            }
+        }
 
-        private int nextFrameIndex => MathHelper.Clamp(currentFrameIndex + (currentDirection > 0 ? 1 : -1), 0, Frames.Count - 1);
+        public TFrame NextFrame
+        {
+            get
+            {
+                if (!HasFrames)
+                    return null;
+
+                if (!currentFrameIndex.HasValue)
+                    return (TFrame)Frames[0];
+
+                if (currentDirection > 0)
+                    return currentFrameIndex == Frames.Count - 1 ? null : (TFrame)Frames[currentFrameIndex.Value + 1];
+                else
+                    return currentFrameIndex == 0 ? null : (TFrame)Frames[nextFrameIndex];
+            }
+        }
+
+        private int? currentFrameIndex;
+
+        private int nextFrameIndex => currentFrameIndex.HasValue ? MathHelper.Clamp(currentFrameIndex.Value + (currentDirection > 0 ? 1 : -1), 0, Frames.Count - 1) : 0;
 
         protected FramedReplayInputHandler(Replay replay)
         {
@@ -46,31 +70,14 @@ namespace osu.Game.Rulesets.Replays
             return true;
         }
 
-        public void SetPosition(Vector2 pos)
-        {
-        }
-
-        protected Vector2? Position
-        {
-            get
-            {
-                if (!hasFrames)
-                    return null;
-
-                return Interpolation.ValueAt(currentTime, CurrentFrame.Position, NextFrame.Position, CurrentFrame.Time, NextFrame.Time);
-            }
-        }
-
-        public override List<InputState> GetPendingStates() => new List<InputState>();
-
-        public bool AtLastFrame => currentFrameIndex == Frames.Count - 1;
-        public bool AtFirstFrame => currentFrameIndex == 0;
-
-        public Vector2 Size => new Vector2(512, 384);
+        public override List<IInput> GetPendingInputs() => new List<IInput>();
 
         private const double sixty_frame_time = 1000.0 / 60;
 
-        private double currentTime;
+        protected virtual double AllowedImportantTimeSpan => sixty_frame_time * 1.2;
+
+        protected double? CurrentTime { get; private set; }
+
         private int currentDirection;
 
         /// <summary>
@@ -79,14 +86,26 @@ namespace osu.Game.Rulesets.Replays
         /// </summary>
         public bool FrameAccuratePlayback = true;
 
-        private bool hasFrames => Frames.Count > 0;
+        protected bool HasFrames => Frames.Count > 0;
 
-        private bool inImportantSection =>
-            FrameAccuratePlayback &&
-            //a button is in a pressed state
-            ((currentDirection > 0 ? CurrentFrame : NextFrame)?.IsImportant ?? false) &&
-            //the next frame is within an allowable time span
-            Math.Abs(currentTime - NextFrame?.Time ?? 0) <= sixty_frame_time * 1.2;
+        private bool inImportantSection
+        {
+            get
+            {
+                if (!HasFrames || !FrameAccuratePlayback)
+                    return false;
+
+                var frame = currentDirection > 0 ? CurrentFrame : NextFrame;
+
+                if (frame == null)
+                    return false;
+
+                return IsImportant(frame) && //a button is in a pressed state
+                       Math.Abs(CurrentTime - NextFrame?.Time ?? 0) <= AllowedImportantTimeSpan; //the next frame is within an allowable time span
+            }
+        }
+
+        protected virtual bool IsImportant([NotNull] TFrame frame) => false;
 
         /// <summary>
         /// Update the current frame based on an incoming time value.
@@ -97,43 +116,36 @@ namespace osu.Game.Rulesets.Replays
         /// <returns>The usable time value. If null, we should not advance time as we do not have enough data.</returns>
         public override double? SetFrameFromTime(double time)
         {
-            currentDirection = time.CompareTo(currentTime);
-            if (currentDirection == 0) currentDirection = 1;
-
-            if (hasFrames)
+            if (!CurrentTime.HasValue)
             {
-                //if we changed frames, we want to execute once *exactly* on the frame's time.
-                if (currentDirection == time.CompareTo(NextFrame.Time) && advanceFrame())
+                currentDirection = 1;
+            }
+            else
+            {
+                currentDirection = time.CompareTo(CurrentTime);
+                if (currentDirection == 0) currentDirection = 1;
+            }
+
+            if (HasFrames)
+            {
+                // check if the next frame is valid for the current playback direction.
+                // validity is if the next frame is equal or "earlier"
+                var compare = time.CompareTo(NextFrame?.Time);
+
+                if (compare == 0 || compare == currentDirection)
                 {
-                    // If going backwards, we need to execute once _before_ the frame time to reverse any judgements
-                    // that would occur as a result of this frame in forward playback
-                    if (currentDirection == -1)
-                        return currentTime = CurrentFrame.Time - 1;
-                    return currentTime = CurrentFrame.Time;
+                    if (advanceFrame())
+                        return CurrentTime = CurrentFrame.Time;
                 }
-
-                //if we didn't change frames, we need to ensure we are allowed to run frames in between, else return null.
-                if (inImportantSection)
-                    return null;
+                else
+                {
+                    // if we didn't change frames, we need to ensure we are allowed to run frames in between, else return null.
+                    if (inImportantSection)
+                        return null;
+                }
             }
 
-            return currentTime = time;
-        }
-
-        protected class ReplayMouseState : MouseState
-        {
-            public ReplayMouseState(Vector2 position)
-            {
-                Position = position;
-            }
-        }
-
-        protected class ReplayKeyboardState : KeyboardState
-        {
-            public ReplayKeyboardState(List<Key> keys)
-            {
-                Keys = keys;
-            }
+            return CurrentTime = time;
         }
     }
 }

@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
@@ -11,71 +11,42 @@ using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
-using OpenTK;
-using OpenTK.Graphics;
+using osu.Game.Graphics.UserInterface;
+using osu.Game.Overlays.BeatmapSet.Buttons;
+using osu.Game.Overlays.Direct;
+using osuTK;
+using osuTK.Graphics;
+using DownloadButton = osu.Game.Overlays.BeatmapSet.Buttons.DownloadButton;
 
 namespace osu.Game.Overlays.BeatmapSet
 {
-    public class Header : Container
+    public class Header : DownloadTrackingComposite
     {
-        private const float transition_duration = 250;
+        private const float transition_duration = 200;
         private const float tabs_height = 50;
         private const float buttons_height = 45;
         private const float buttons_spacing = 5;
 
         private readonly Box tabsBg;
-        private readonly Container coverContainer;
+        private readonly UpdateableBeatmapSetCover cover;
         private readonly OsuSpriteText title, artist;
-        private readonly Container noVideoButtons;
-        private readonly FillFlowContainer videoButtons;
         private readonly AuthorInfo author;
-        private readonly Container downloadButtonsContainer;
+        private readonly FillFlowContainer downloadButtonsContainer;
+        private readonly BeatmapSetOnlineStatusPill onlineStatusPill;
         public Details Details;
-
-        private BeatmapManager beatmaps;
-
-        private DelayedLoadWrapper cover;
 
         public readonly BeatmapPicker Picker;
 
-        private BeatmapSetInfo beatmapSet;
-        public BeatmapSetInfo BeatmapSet
-        {
-            get { return beatmapSet; }
-            set
-            {
-                if (value == beatmapSet) return;
-                beatmapSet = value;
-
-                Picker.BeatmapSet = author.BeatmapSet = Details.BeatmapSet = BeatmapSet;
-                title.Text = BeatmapSet.Metadata.Title;
-                artist.Text = BeatmapSet.Metadata.Artist;
-
-                downloadButtonsContainer.FadeIn();
-                noVideoButtons.FadeTo(BeatmapSet.OnlineInfo.HasVideo ? 0 : 1, transition_duration);
-                videoButtons.FadeTo(BeatmapSet.OnlineInfo.HasVideo ? 1 : 0, transition_duration);
-
-                cover?.FadeOut(400, Easing.Out);
-                coverContainer.Add(cover = new DelayedLoadWrapper(
-                    new BeatmapSetCover(BeatmapSet)
-                    {
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
-                        RelativeSizeAxes = Axes.Both,
-                        FillMode = FillMode.Fill,
-                        OnLoadComplete = d => d.FadeInFromZero(400, Easing.Out),
-                    }, 300)
-                {
-                    RelativeSizeAxes = Axes.Both,
-                });
-            }
-        }
+        private readonly FavouriteButton favouriteButton;
 
         public Header()
         {
+            ExternalLinkButton externalLink;
+
             RelativeSizeAxes = Axes.X;
             Height = 400;
             Masking = true;
+
             EdgeEffect = new EdgeEffectParameters
             {
                 Colour = Color4.Black.Opacity(0.25f),
@@ -83,7 +54,8 @@ namespace osu.Game.Overlays.BeatmapSet
                 Radius = 3,
                 Offset = new Vector2(0f, 1f),
             };
-            Children = new Drawable[]
+
+            InternalChildren = new Drawable[]
             {
                 new Container
                 {
@@ -108,12 +80,7 @@ namespace osu.Game.Overlays.BeatmapSet
                             RelativeSizeAxes = Axes.Both,
                             Children = new Drawable[]
                             {
-                                new Box
-                                {
-                                    RelativeSizeAxes = Axes.Both,
-                                    Colour = Color4.Black,
-                                },
-                                coverContainer = new Container
+                                cover = new UpdateableBeatmapSetCover
                                 {
                                     RelativeSizeAxes = Axes.Both,
                                 },
@@ -140,16 +107,25 @@ namespace osu.Game.Overlays.BeatmapSet
                                         Height = 113,
                                         Child = Picker = new BeatmapPicker(),
                                     },
-                                    title = new OsuSpriteText
+                                    new FillFlowContainer
                                     {
-                                        Font = @"Exo2.0-BoldItalic",
-                                        TextSize = 37,
+                                        Direction = FillDirection.Horizontal,
+                                        AutoSizeAxes = Axes.Both,
+                                        Children = new Drawable[]
+                                        {
+                                            title = new OsuSpriteText
+                                            {
+                                                Font = OsuFont.GetFont(size: 37, weight: FontWeight.Bold, italics: true)
+                                            },
+                                            externalLink = new ExternalLinkButton
+                                            {
+                                                Anchor = Anchor.BottomLeft,
+                                                Origin = Anchor.BottomLeft,
+                                                Margin = new MarginPadding { Left = 3, Bottom = 4 }, //To better lineup with the font
+                                            },
+                                        }
                                     },
-                                    artist = new OsuSpriteText
-                                    {
-                                        Font = @"Exo2.0-SemiBoldItalic",
-                                        TextSize = 25,
-                                    },
+                                    artist = new OsuSpriteText { Font = OsuFont.GetFont(size: 25, weight: FontWeight.SemiBold, italics: true) },
                                     new Container
                                     {
                                         RelativeSizeAxes = Axes.X,
@@ -164,93 +140,102 @@ namespace osu.Game.Overlays.BeatmapSet
                                         Margin = new MarginPadding { Top = 10 },
                                         Children = new Drawable[]
                                         {
-                                            new FavouriteButton(),
-                                            downloadButtonsContainer = new Container
+                                            favouriteButton = new FavouriteButton(),
+                                            downloadButtonsContainer = new FillFlowContainer
                                             {
                                                 RelativeSizeAxes = Axes.Both,
                                                 Padding = new MarginPadding { Left = buttons_height + buttons_spacing },
-                                                Children = new Drawable[]
-                                                {
-                                                    noVideoButtons = new Container
-                                                    {
-                                                        RelativeSizeAxes = Axes.Both,
-                                                        Alpha = 0f,
-                                                        Child = new DownloadButton("Download", @"")
-                                                        {
-                                                            Action = () => download(false),
-                                                        },
-                                                    },
-                                                    videoButtons = new FillFlowContainer
-                                                    {
-                                                        RelativeSizeAxes = Axes.Both,
-                                                        Spacing = new Vector2(buttons_spacing),
-                                                        Alpha = 0f,
-                                                        Children = new[]
-                                                        {
-                                                            new DownloadButton("Download", "with Video")
-                                                            {
-                                                                Action = () => download(false),
-                                                            },
-                                                            new DownloadButton("Download", "without Video")
-                                                            {
-                                                                Action = () => download(true),
-                                                            },
-                                                        },
-                                                    },
-                                                },
+                                                Spacing = new Vector2(buttons_spacing),
                                             },
                                         },
                                     },
                                 },
                             },
                         },
-                        Details = new Details
+                        new FillFlowContainer
                         {
                             Anchor = Anchor.BottomRight,
                             Origin = Anchor.BottomRight,
+                            AutoSizeAxes = Axes.Both,
                             Margin = new MarginPadding { Right = BeatmapSetOverlay.X_PADDING },
+                            Direction = FillDirection.Vertical,
+                            Spacing = new Vector2(10),
+                            Children = new Drawable[]
+                            {
+                                onlineStatusPill = new BeatmapSetOnlineStatusPill
+                                {
+                                    Anchor = Anchor.TopRight,
+                                    Origin = Anchor.TopRight,
+                                    TextSize = 14,
+                                    TextPadding = new MarginPadding { Horizontal = 25, Vertical = 8 }
+                                },
+                                Details = new Details(),
+                            },
                         },
                     },
                 },
             };
 
-            Picker.Beatmap.ValueChanged += b => Details.Beatmap = b;
+            Picker.Beatmap.ValueChanged += b => Details.Beatmap = b.NewValue;
+            Picker.Beatmap.ValueChanged += b => externalLink.Link = $@"https://osu.ppy.sh/beatmapsets/{BeatmapSet.Value?.OnlineBeatmapSetID}#{b.NewValue?.Ruleset.ShortName}/{b.NewValue?.OnlineBeatmapID}";
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours, BeatmapManager beatmaps)
+        private void load(OsuColour colours)
         {
             tabsBg.Colour = colours.Gray3;
-            this.beatmaps = beatmaps;
 
-            beatmaps.BeatmapSetAdded += handleBeatmapAdd;
-        }
+            State.BindValueChanged(_ => updateDownloadButtons());
 
-        protected override void Dispose(bool isDisposing)
-        {
-            base.Dispose(isDisposing);
-            if (beatmaps != null) beatmaps.BeatmapSetAdded -= handleBeatmapAdd;
-        }
-
-        private void handleBeatmapAdd(BeatmapSetInfo beatmap)
-        {
-            if (beatmap.OnlineBeatmapSetID == BeatmapSet?.OnlineBeatmapSetID)
-                downloadButtonsContainer.FadeOut(transition_duration);
-        }
-
-        private void download(bool noVideo)
-        {
-            if (beatmaps.GetExistingDownload(BeatmapSet) != null)
+            BeatmapSet.BindValueChanged(setInfo =>
             {
-                downloadButtonsContainer.MoveToX(-5, 50, Easing.OutSine).Then()
-                       .MoveToX(5, 100, Easing.InOutSine).Then()
-                       .MoveToX(-5, 100, Easing.InOutSine).Then()
-                       .MoveToX(0, 50, Easing.InSine).Then();
+                Picker.BeatmapSet = author.BeatmapSet = Details.BeatmapSet = setInfo.NewValue;
 
-                return;
+                title.Text = setInfo.NewValue?.Metadata.Title ?? string.Empty;
+                artist.Text = setInfo.NewValue?.Metadata.Artist ?? string.Empty;
+                onlineStatusPill.Status = setInfo.NewValue?.OnlineInfo.Status ?? BeatmapSetOnlineStatus.None;
+                cover.BeatmapSet = setInfo.NewValue;
+
+                if (setInfo.NewValue != null)
+                {
+                    downloadButtonsContainer.FadeIn(transition_duration);
+                    favouriteButton.FadeIn(transition_duration);
+                }
+                else
+                {
+                    downloadButtonsContainer.FadeOut(transition_duration);
+                    favouriteButton.FadeOut(transition_duration);
+                }
+
+                updateDownloadButtons();
+            }, true);
+        }
+
+        private void updateDownloadButtons()
+        {
+            if (BeatmapSet.Value == null) return;
+
+            switch (State.Value)
+            {
+                case DownloadState.LocallyAvailable:
+                    // temporary for UX until new design is implemented.
+                    downloadButtonsContainer.Child = new osu.Game.Overlays.Direct.DownloadButton(BeatmapSet.Value)
+                    {
+                        Width = 50,
+                        RelativeSizeAxes = Axes.Y
+                    };
+                    break;
+                case DownloadState.Downloading:
+                case DownloadState.Downloaded:
+                    // temporary to avoid showing two buttons for maps with novideo. will be fixed in new beatmap overlay design.
+                    downloadButtonsContainer.Child = new DownloadButton(BeatmapSet.Value);
+                    break;
+                default:
+                    downloadButtonsContainer.Child = new DownloadButton(BeatmapSet.Value);
+                    if (BeatmapSet.Value.OnlineInfo.HasVideo)
+                        downloadButtonsContainer.Add(new DownloadButton(BeatmapSet.Value, true));
+                    break;
             }
-
-            beatmaps.Download(BeatmapSet, noVideo);
         }
     }
 }

@@ -1,26 +1,24 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
+using osuTK;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Containers;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online.Leaderboards;
 using osu.Game.Rulesets.Mods;
-using osu.Game.Screens.Select.Leaderboards;
-using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
+using osu.Game.Scoring;
 
 namespace osu.Game.Overlays.Profile.Sections.Ranks
 {
     public abstract class DrawableProfileScore : DrawableProfileRow
     {
-        private readonly FillFlowContainer metadata;
         private readonly ScoreModsContainer modsContainer;
-        protected readonly Score Score;
+        protected readonly ScoreInfo Score;
 
-        protected DrawableProfileScore(Score score)
+        protected DrawableProfileScore(ScoreInfo score)
         {
             Score = score;
 
@@ -42,24 +40,20 @@ namespace osu.Game.Overlays.Profile.Sections.Ranks
         [BackgroundDependencyLoader(true)]
         private void load(OsuColour colour)
         {
-            RightFlowContainer.Add(new OsuSpriteText
+            var text = new OsuSpriteText
             {
                 Text = $"accuracy: {Score.Accuracy:P2}",
                 Anchor = Anchor.TopRight,
                 Origin = Anchor.TopRight,
                 Colour = colour.GrayA,
-                TextSize = 11,
-                Font = "Exo2.0-RegularItalic",
-                Depth = -1,
-            });
+                Font = OsuFont.GetFont(size: 11, weight: FontWeight.Regular, italics: true)
+            };
+
+            RightFlowContainer.Add(text);
+            RightFlowContainer.SetLayoutPosition(text, 1);
 
             LeftFlowContainer.Add(new BeatmapMetadataContainer(Score.Beatmap));
-            LeftFlowContainer.Add(new OsuSpriteText
-            {
-                Text = Score.Date.LocalDateTime.ToShortDateString(),
-                TextSize = 11,
-                Colour = OsuColour.Gray(0xAA),
-            });
+            LeftFlowContainer.Add(new DrawableDate(Score.Date));
 
             foreach (Mod mod in Score.Mods)
                 modsContainer.Add(new ModIcon(mod) { Scale = new Vector2(0.5f) });

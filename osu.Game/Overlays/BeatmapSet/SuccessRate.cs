@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -21,24 +21,31 @@ namespace osu.Game.Overlays.BeatmapSet
         private readonly FailRetryGraph graph;
 
         private BeatmapInfo beatmap;
+
         public BeatmapInfo Beatmap
         {
-            get { return beatmap; }
+            get => beatmap;
             set
             {
                 if (value == beatmap) return;
+
                 beatmap = value;
 
-                int passCount = beatmap.OnlineInfo.PassCount;
-                int playCount = beatmap.OnlineInfo.PlayCount;
-
-                var rate = playCount != 0 ? (float)passCount / playCount : 0;
-                successPercent.Text = rate.ToString("P0");
-                successRate.Length = rate;
-                percentContainer.ResizeWidthTo(successRate.Length, 250, Easing.InOutCubic);
-
-                graph.Metrics = Beatmap.Metrics;
+                updateDisplay();
             }
+        }
+
+        private void updateDisplay()
+        {
+            int passCount = beatmap?.OnlineInfo.PassCount ?? 0;
+            int playCount = beatmap?.OnlineInfo.PlayCount ?? 0;
+
+            var rate = playCount != 0 ? (float)passCount / playCount : 0;
+            successPercent.Text = rate.ToString("P0");
+            successRate.Length = rate;
+            percentContainer.ResizeWidthTo(successRate.Length, 250, Easing.InOutCubic);
+
+            graph.Metrics = beatmap?.Metrics;
         }
 
         public SuccessRate()
@@ -57,7 +64,7 @@ namespace osu.Game.Overlays.BeatmapSet
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Text = "Success Rate",
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13)
                         },
                         successRate = new Bar
                         {
@@ -74,8 +81,7 @@ namespace osu.Game.Overlays.BeatmapSet
                             {
                                 Anchor = Anchor.TopRight,
                                 Origin = Anchor.TopCentre,
-                                Text = @"0%",
-                                TextSize = 13,
+                                Font = OsuFont.GetFont(size: 13),
                             },
                         },
                         graphLabel = new OsuSpriteText
@@ -83,7 +89,7 @@ namespace osu.Game.Overlays.BeatmapSet
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Text = "Points of Failure",
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13),
                             Margin = new MarginPadding { Vertical = 20 },
                         },
                     },
@@ -103,6 +109,8 @@ namespace osu.Game.Overlays.BeatmapSet
             successRateLabel.Colour = successPercent.Colour = graphLabel.Colour = colours.Gray5;
             successRate.AccentColour = colours.Green;
             successRate.BackgroundColour = colours.GrayD;
+
+            updateDisplay();
         }
 
         protected override void UpdateAfterChildren()

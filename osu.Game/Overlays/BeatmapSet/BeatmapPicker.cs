@@ -1,23 +1,24 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Linq;
 using osu.Framework;
 using osu.Framework.Allocation;
-using osu.Framework.Configuration;
+using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Input;
+using osu.Framework.Graphics.Sprites;
+using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Overlays.BeatmapSet
 {
@@ -33,18 +34,27 @@ namespace osu.Game.Overlays.BeatmapSet
         public readonly Bindable<BeatmapInfo> Beatmap = new Bindable<BeatmapInfo>();
 
         private BeatmapSetInfo beatmapSet;
+
         public BeatmapSetInfo BeatmapSet
         {
-            get { return beatmapSet; }
+            get => beatmapSet;
             set
             {
                 if (value == beatmapSet) return;
+
                 beatmapSet = value;
 
-                Beatmap.Value = BeatmapSet.Beatmaps.First();
-                plays.Value = BeatmapSet.OnlineInfo.PlayCount;
-                favourites.Value = BeatmapSet.OnlineInfo.FavouriteCount;
-                difficulties.ChildrenEnumerable = BeatmapSet.Beatmaps.Select(b => new DifficultySelectorButton(b)
+                updateDisplay();
+            }
+        }
+
+        private void updateDisplay()
+        {
+            difficulties.Clear();
+
+            if (BeatmapSet != null)
+            {
+                difficulties.ChildrenEnumerable = BeatmapSet.Beatmaps.OrderBy(beatmap => beatmap.StarDifficulty).Select(b => new DifficultySelectorButton(b)
                 {
                     State = DifficultySelectorState.NotSelected,
                     OnHovered = beatmap =>
@@ -53,14 +63,16 @@ namespace osu.Game.Overlays.BeatmapSet
                         starRating.Text = beatmap.StarDifficulty.ToString("Star Difficulty 0.##");
                         starRating.FadeIn(100);
                     },
-                    OnClicked = beatmap =>
-                    {
-                        Beatmap.Value = beatmap;
-                    },
+                    OnClicked = beatmap => { Beatmap.Value = beatmap; },
                 });
-
-                updateDifficultyButtons();
             }
+
+            starRating.FadeOut(100);
+            Beatmap.Value = BeatmapSet?.Beatmaps.FirstOrDefault();
+            plays.Value = BeatmapSet?.OnlineInfo.PlayCount ?? 0;
+            favourites.Value = BeatmapSet?.OnlineInfo.FavouriteCount ?? 0;
+
+            updateDifficultyButtons();
         }
 
         public BeatmapPicker()
@@ -98,15 +110,13 @@ namespace osu.Game.Overlays.BeatmapSet
                                 {
                                     Anchor = Anchor.BottomLeft,
                                     Origin = Anchor.BottomLeft,
-                                    TextSize = 20,
-                                    Font = @"Exo2.0-Bold",
+                                    Font = OsuFont.GetFont(size: 20, weight: FontWeight.Bold)
                                 },
                                 starRating = new OsuSpriteText
                                 {
                                     Anchor = Anchor.BottomLeft,
                                     Origin = Anchor.BottomLeft,
-                                    TextSize = 13,
-                                    Font = @"Exo2.0-Bold",
+                                    Font = OsuFont.GetFont(size: 13, weight: FontWeight.Bold),
                                     Text = "Star Difficulty",
                                     Alpha = 0,
                                     Margin = new MarginPadding { Bottom = 1 },
@@ -121,8 +131,8 @@ namespace osu.Game.Overlays.BeatmapSet
                             Margin = new MarginPadding { Top = 5 },
                             Children = new[]
                             {
-                                plays = new Statistic(FontAwesome.fa_play_circle),
-                                favourites = new Statistic(FontAwesome.fa_heart),
+                                plays = new Statistic(FontAwesome.Solid.PlayCircle),
+                                favourites = new Statistic(FontAwesome.Solid.Heart),
                             },
                         },
                     },
@@ -131,7 +141,7 @@ namespace osu.Game.Overlays.BeatmapSet
 
             Beatmap.ValueChanged += b =>
             {
-                showBeatmap(b);
+                showBeatmap(b.NewValue);
                 updateDifficultyButtons();
             };
         }
@@ -140,6 +150,7 @@ namespace osu.Game.Overlays.BeatmapSet
         private void load(OsuColour colours)
         {
             starRating.Colour = colours.Yellow;
+            updateDisplay();
         }
 
         protected override void LoadComplete()
@@ -150,7 +161,10 @@ namespace osu.Game.Overlays.BeatmapSet
             Beatmap.TriggerChange();
         }
 
-        private void showBeatmap(BeatmapInfo beatmap) => version.Text = beatmap.Version;
+        private void showBeatmap(BeatmapInfo beatmap)
+        {
+            version.Text = beatmap?.Version;
+        }
 
         private void updateDifficultyButtons()
         {
@@ -161,9 +175,9 @@ namespace osu.Game.Overlays.BeatmapSet
         {
             public Action OnLostHover;
 
-            protected override void OnHoverLost(InputState state)
+            protected override void OnHoverLost(HoverLostEvent e)
             {
-                base.OnHoverLost(state);
+                base.OnHoverLost(e);
                 OnLostHover?.Invoke();
             }
         }
@@ -183,12 +197,14 @@ namespace osu.Game.Overlays.BeatmapSet
             public event Action<DifficultySelectorState> StateChanged;
 
             private DifficultySelectorState state;
+
             public DifficultySelectorState State
             {
-                get { return state; }
+                get => state;
                 set
                 {
                     if (value == state) return;
+
                     state = value;
 
                     StateChanged?.Invoke(State);
@@ -228,24 +244,24 @@ namespace osu.Game.Overlays.BeatmapSet
                 };
             }
 
-            protected override bool OnHover(InputState state)
+            protected override bool OnHover(HoverEvent e)
             {
                 fadeIn();
                 OnHovered?.Invoke(Beatmap);
-                return base.OnHover(state);
+                return base.OnHover(e);
             }
 
-            protected override void OnHoverLost(InputState state)
+            protected override void OnHoverLost(HoverLostEvent e)
             {
                 if (State == DifficultySelectorState.NotSelected)
                     fadeOut();
-                base.OnHoverLost(state);
+                base.OnHoverLost(e);
             }
 
-            protected override bool OnClick(InputState state)
+            protected override bool OnClick(ClickEvent e)
             {
                 OnClicked?.Invoke(Beatmap);
-                return base.OnClick(state);
+                return base.OnClick(e);
             }
 
             private void fadeIn()
@@ -266,9 +282,10 @@ namespace osu.Game.Overlays.BeatmapSet
             private readonly OsuSpriteText text;
 
             private int value;
+
             public int Value
             {
-                get { return value; }
+                get => value;
                 set
                 {
                     this.value = value;
@@ -276,7 +293,7 @@ namespace osu.Game.Overlays.BeatmapSet
                 }
             }
 
-            public Statistic(FontAwesome icon)
+            public Statistic(IconUsage icon)
             {
                 AutoSizeAxes = Axes.Both;
                 Direction = FillDirection.Horizontal;
@@ -296,8 +313,7 @@ namespace osu.Game.Overlays.BeatmapSet
                     {
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,
-                        Font = @"Exo2.0-SemiBoldItalic",
-                        TextSize = 14,
+                        Font = OsuFont.GetFont(size: 14, weight: FontWeight.SemiBold, italics: true)
                     },
                 };
             }

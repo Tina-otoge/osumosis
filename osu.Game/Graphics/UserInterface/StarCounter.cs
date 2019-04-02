@@ -1,11 +1,13 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
+using osuTK;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.MathUtils;
 using System;
+using System.Linq;
+using osu.Framework.Graphics.Sprites;
 
 namespace osu.Game.Graphics.UserInterface
 {
@@ -40,10 +42,7 @@ namespace osu.Game.Graphics.UserInterface
         /// </summary>
         public float CountStars
         {
-            get
-            {
-                return countStars;
-            }
+            get => countStars;
 
             set
             {
@@ -72,16 +71,9 @@ namespace osu.Game.Graphics.UserInterface
                     AutoSizeAxes = Axes.Both,
                     Direction = FillDirection.Horizontal,
                     Spacing = new Vector2(star_spacing),
+                    ChildrenEnumerable = Enumerable.Range(0, StarCount).Select(i => new Star { Alpha = minStarAlpha })
                 }
             };
-
-            for (int i = 0; i < StarCount; i++)
-            {
-                stars.Add(new Star
-                {
-                    Alpha = minStarAlpha,
-                });
-            }
         }
 
         protected override void LoadComplete()
@@ -143,19 +135,17 @@ namespace osu.Game.Graphics.UserInterface
         private class Star : Container
         {
             public readonly SpriteIcon Icon;
+
             public Star()
             {
                 Size = new Vector2(star_size);
 
-                Children = new[]
+                Child = Icon = new SpriteIcon
                 {
-                    Icon = new SpriteIcon
-                    {
-                        Size = new Vector2(star_size),
-                        Icon = FontAwesome.fa_star,
-                        Anchor = Anchor.Centre,
-                        Origin = Anchor.Centre,
-                    }
+                    Size = new Vector2(star_size),
+                    Icon = FontAwesome.Solid.Star,
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
                 };
             }
         }

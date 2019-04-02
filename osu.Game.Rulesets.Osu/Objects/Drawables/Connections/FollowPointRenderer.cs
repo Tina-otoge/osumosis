@@ -1,9 +1,9 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using System.Collections.Generic;
-using OpenTK;
+using osuTK;
 using osu.Framework.Graphics;
 using osu.Game.Rulesets.Objects.Types;
 
@@ -12,39 +12,44 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Connections
     public class FollowPointRenderer : ConnectionRenderer<OsuHitObject>
     {
         private int pointDistance = 32;
+
         /// <summary>
         /// Determines how much space there is between points.
         /// </summary>
         public int PointDistance
         {
-            get { return pointDistance; }
+            get => pointDistance;
             set
             {
                 if (pointDistance == value) return;
+
                 pointDistance = value;
                 update();
             }
         }
 
         private int preEmpt = 800;
+
         /// <summary>
         /// Follow points to the next hitobject start appearing for this many milliseconds before an hitobject's end time.
         /// </summary>
         public int PreEmpt
         {
-            get { return preEmpt; }
+            get => preEmpt;
             set
             {
                 if (preEmpt == value) return;
+
                 preEmpt = value;
                 update();
             }
         }
 
         private IEnumerable<OsuHitObject> hitObjects;
+
         public override IEnumerable<OsuHitObject> HitObjects
         {
-            get { return hitObjects; }
+            get => hitObjects;
             set
             {
                 hitObjects = value;
@@ -56,7 +61,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Connections
 
         private void update()
         {
-            Clear();
+            ClearInternal();
 
             if (hitObjects == null)
                 return;
@@ -73,7 +78,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Connections
 
                     Vector2 distanceVector = endPosition - startPosition;
                     int distance = (int)distanceVector.Length;
-                    float rotation = (float)Math.Atan2(distanceVector.Y, distanceVector.X);
+                    float rotation = (float)(Math.Atan2(distanceVector.Y, distanceVector.X) * (180 / Math.PI));
                     double duration = endTime - startTime;
 
                     for (int d = (int)(PointDistance * 1.5); d < distance - PointDistance; d += PointDistance)
@@ -86,7 +91,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Connections
 
                         FollowPoint fp;
 
-                        Add(fp = new FollowPoint
+                        AddInternal(fp = new FollowPoint
                         {
                             Position = pointStartPosition,
                             Rotation = rotation,
@@ -96,17 +101,18 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables.Connections
 
                         using (fp.BeginAbsoluteSequence(fadeInTime))
                         {
-                            fp.FadeIn(DrawableOsuHitObject.TIME_FADEIN);
-                            fp.ScaleTo(1, DrawableOsuHitObject.TIME_FADEIN, Easing.Out);
+                            fp.FadeIn(currHitObject.TimeFadeIn);
+                            fp.ScaleTo(1, currHitObject.TimeFadeIn, Easing.Out);
 
-                            fp.MoveTo(pointEndPosition, DrawableOsuHitObject.TIME_FADEIN, Easing.Out);
+                            fp.MoveTo(pointEndPosition, currHitObject.TimeFadeIn, Easing.Out);
 
-                            fp.Delay(fadeOutTime - fadeInTime).FadeOut(DrawableOsuHitObject.TIME_FADEIN);
+                            fp.Delay(fadeOutTime - fadeInTime).FadeOut(currHitObject.TimeFadeIn);
                         }
 
                         fp.Expire(true);
                     }
                 }
+
                 prevHitObject = currHitObject;
             }
         }

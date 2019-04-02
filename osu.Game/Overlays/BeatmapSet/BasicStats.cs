@@ -1,15 +1,16 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
+using osu.Framework.Graphics.Sprites;
 using osu.Game.Beatmaps;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
-using OpenTK;
+using osuTK;
 
 namespace osu.Game.Overlays.BeatmapSet
 {
@@ -18,27 +19,47 @@ namespace osu.Game.Overlays.BeatmapSet
         private readonly Statistic length, bpm, circleCount, sliderCount;
 
         private BeatmapSetInfo beatmapSet;
+
         public BeatmapSetInfo BeatmapSet
         {
-            get { return beatmapSet; }
+            get => beatmapSet;
             set
             {
                 if (value == beatmapSet) return;
+
                 beatmapSet = value;
 
-                bpm.Value = BeatmapSet.OnlineInfo.BPM.ToString(@"0.##");
+                updateDisplay();
             }
         }
 
         private BeatmapInfo beatmap;
+
         public BeatmapInfo Beatmap
         {
-            get { return beatmap; }
+            get => beatmap;
             set
             {
                 if (value == beatmap) return;
+
                 beatmap = value;
 
+                updateDisplay();
+            }
+        }
+
+        private void updateDisplay()
+        {
+            bpm.Value = BeatmapSet?.OnlineInfo.BPM.ToString(@"0.##") ?? "-";
+
+            if (beatmap == null)
+            {
+                length.Value = string.Empty;
+                circleCount.Value = string.Empty;
+                sliderCount.Value = string.Empty;
+            }
+            else
+            {
                 length.Value = TimeSpan.FromSeconds(beatmap.OnlineInfo.Length).ToString(@"m\:ss");
                 circleCount.Value = beatmap.OnlineInfo.CircleCount.ToString();
                 sliderCount.Value = beatmap.OnlineInfo.SliderCount.ToString();
@@ -54,12 +75,18 @@ namespace osu.Game.Overlays.BeatmapSet
                 Direction = FillDirection.Horizontal,
                 Children = new[]
                 {
-                    length = new Statistic(FontAwesome.fa_clock_o, "Length") { Width = 0.25f },
-                    bpm = new Statistic(FontAwesome.fa_circle, "BPM") { Width = 0.25f },
-                    circleCount = new Statistic(FontAwesome.fa_circle_o, "Circle Count") { Width = 0.25f },
-                    sliderCount = new Statistic(FontAwesome.fa_circle, "Slider Count") { Width = 0.25f },
+                    length = new Statistic(FontAwesome.Regular.Clock, "Length") { Width = 0.25f },
+                    bpm = new Statistic(FontAwesome.Regular.Circle, "BPM") { Width = 0.25f },
+                    circleCount = new Statistic(FontAwesome.Regular.Circle, "Circle Count") { Width = 0.25f },
+                    sliderCount = new Statistic(FontAwesome.Regular.Circle, "Slider Count") { Width = 0.25f },
                 },
             };
+        }
+
+        [BackgroundDependencyLoader]
+        private void load()
+        {
+            updateDisplay();
         }
 
         private class Statistic : Container, IHasTooltip
@@ -68,13 +95,14 @@ namespace osu.Game.Overlays.BeatmapSet
             private readonly OsuSpriteText value;
 
             public string TooltipText => name;
+
             public string Value
             {
-                get { return value.Text; }
-                set { this.value.Text = value; }
+                get => value.Text;
+                set => this.value.Text = value;
             }
 
-            public Statistic(FontAwesome icon, string name)
+            public Statistic(IconUsage icon, string name)
             {
                 this.name = name;
                 RelativeSizeAxes = Axes.X;
@@ -93,7 +121,7 @@ namespace osu.Game.Overlays.BeatmapSet
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.Centre,
-                                Icon = FontAwesome.fa_square,
+                                Icon = FontAwesome.Solid.Square,
                                 Size = new Vector2(13),
                                 Rotation = 45,
                                 Colour = OsuColour.FromHex(@"441288"),
@@ -111,9 +139,8 @@ namespace osu.Game.Overlays.BeatmapSet
                             {
                                 Anchor = Anchor.CentreLeft,
                                 Origin = Anchor.CentreLeft,
-                                TextSize = 13,
-                                Font = @"Exo2.0-Bold",
                                 Margin = new MarginPadding { Left = 10 },
+                                Font = OsuFont.GetFont(size: 13, weight: FontWeight.Bold),
                             },
                         },
                     },

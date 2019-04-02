@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using System;
 using osu.Framework.Allocation;
@@ -7,8 +7,9 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Graphics;
-using OpenTK;
-using OpenTK.Graphics;
+using osu.Game.Graphics.Containers;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Overlays.Notifications
 {
@@ -16,16 +17,15 @@ namespace osu.Game.Overlays.Notifications
     {
         public string Text
         {
-            set
-            {
-                Schedule(() => textDrawable.Text = value);
-            }
+            set => Schedule(() => textDrawable.Text = value);
         }
+
+        public string CompletionText { get; set; } = "Task has completed!";
 
         public float Progress
         {
-            get { return progressBar.Progress; }
-            set { Schedule(() => progressBar.Progress = value); }
+            get => progressBar.Progress;
+            set => Schedule(() => progressBar.Progress = value);
         }
 
         protected override void LoadComplete()
@@ -38,9 +38,8 @@ namespace osu.Game.Overlays.Notifications
 
         public virtual ProgressNotificationState State
         {
-            get { return state; }
-            set
-            {
+            get => state;
+            set =>
                 Schedule(() =>
                 {
                     bool stateChanged = state != value;
@@ -79,7 +78,6 @@ namespace osu.Game.Overlays.Notifications
                         }
                     }
                 });
-            }
         }
 
         private ProgressNotificationState state;
@@ -87,13 +85,13 @@ namespace osu.Game.Overlays.Notifications
         protected virtual Notification CreateCompletionNotification() => new ProgressCompletionNotification
         {
             Activated = CompletionClickAction,
-            Text = "Task has completed!"
+            Text = CompletionText
         };
 
         protected virtual void Completed()
         {
-            Expire();
             CompletionTarget?.Invoke(CreateCompletionNotification());
+            base.Close();
         }
 
         public override bool DisplayOnTop => false;
@@ -112,10 +110,7 @@ namespace osu.Game.Overlays.Notifications
                 RelativeSizeAxes = Axes.Both,
             });
 
-            Content.Add(textDrawable = new TextFlowContainer(t =>
-            {
-                t.TextSize = 16;
-            })
+            Content.Add(textDrawable = new OsuTextFlowContainer
             {
                 Colour = OsuColour.Gray(128),
                 AutoSizeAxes = Axes.Y,
@@ -166,7 +161,7 @@ namespace osu.Game.Overlays.Notifications
         public Action<Notification> CompletionTarget { get; set; }
 
         /// <summary>
-        /// An action to complete when the completion notification is clicked.
+        /// An action to complete when the completion notification is clicked. Return true to close.
         /// </summary>
         public Func<bool> CompletionClickAction;
 
@@ -178,9 +173,10 @@ namespace osu.Game.Overlays.Notifications
             private Color4 colourInactive;
 
             private float progress;
+
             public float Progress
             {
-                get { return progress; }
+                get => progress;
                 set
                 {
                     if (progress == value) return;
@@ -194,7 +190,7 @@ namespace osu.Game.Overlays.Notifications
 
             public bool Active
             {
-                get { return active; }
+                get => active;
                 set
                 {
                     active = value;
@@ -213,7 +209,6 @@ namespace osu.Game.Overlays.Notifications
                     }
                 };
             }
-
 
             [BackgroundDependencyLoader]
             private void load(OsuColour colours)

@@ -1,7 +1,7 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
+using osuTK;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using System;
@@ -9,16 +9,18 @@ using System.Collections.Generic;
 using osu.Game.Graphics;
 using osu.Framework.Allocation;
 using System.Linq;
-using osu.Framework.Timing;
+using osu.Framework.Bindables;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
+using osu.Game.Rulesets.UI;
+
 namespace osu.Game.Screens.Play
 {
     public class SongProgress : OverlayContainer
     {
         private const int bottom_bar_height = 5;
 
-        private static readonly Vector2 handle_size = new Vector2(14, 25);
+        private static readonly Vector2 handle_size = new Vector2(10, 18);
 
         private const float transition_duration = 200;
 
@@ -26,12 +28,10 @@ namespace osu.Game.Screens.Play
         private readonly SongProgressGraph graph;
         private readonly SongProgressInfo info;
 
-        public Action<double> OnSeek;
+        public Action<double> RequestSeek;
 
-        public override bool HandleInput => AllowSeeking;
-
-        private IClock audioClock;
-        public IClock AudioClock { set { audioClock = info.AudioClock = value; } }
+        public override bool HandleNonPositionalInput => AllowSeeking;
+        public override bool HandlePositionalInput => AllowSeeking;
 
         private double lastHitTime => ((objects.Last() as IHasEndTime)?.EndTime ?? objects.Last().StartTime) + 1;
 
@@ -53,9 +53,16 @@ namespace osu.Game.Screens.Play
             }
         }
 
-        [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
+        private readonly BindableBool replayLoaded = new BindableBool();
+
+        private GameplayClock gameplayClock;
+
+        [BackgroundDependencyLoader(true)]
+        private void load(OsuColour colours, GameplayClock clock)
         {
+            if (clock != null)
+                gameplayClock = clock;
+
             graph.FillColour = bar.FillColour = colours.BlueLighter;
         }
 
@@ -88,8 +95,8 @@ namespace osu.Game.Screens.Play
                 {
                     Alpha = 0,
                     Anchor = Anchor.BottomLeft,
-                    Origin =  Anchor.BottomLeft,
-                    OnSeek = position => OnSeek?.Invoke(position),
+                    Origin = Anchor.BottomLeft,
+                    OnSeek = time => RequestSeek?.Invoke(time),
                 },
             };
         }
@@ -97,17 +104,21 @@ namespace osu.Game.Screens.Play
         protected override void LoadComplete()
         {
             State = Visibility.Visible;
+
+            replayLoaded.ValueChanged += loaded => AllowSeeking = loaded.NewValue;
+            replayLoaded.TriggerChange();
+        }
+
+        public void BindDrawableRuleset(DrawableRuleset drawableRuleset)
+        {
+            replayLoaded.BindTo(drawableRuleset.HasReplayLoaded);
         }
 
         private bool allowSeeking;
 
         public bool AllowSeeking
         {
-            get
-            {
-                return allowSeeking;
-            }
-
+            get => allowSeeking;
             set
             {
                 if (allowSeeking == value) return;
@@ -121,6 +132,8 @@ namespace osu.Game.Screens.Play
         {
             bar.FadeTo(allowSeeking ? 1 : 0, transition_duration, Easing.In);
             this.MoveTo(new Vector2(0, allowSeeking ? 0 : bottom_bar_height), transition_duration, Easing.In);
+
+            info.Margin = new MarginPadding { Bottom = Height - (allowSeeking ? 0 : handle_size.Y) };
         }
 
         protected override void PopIn()
@@ -141,14 +154,11 @@ namespace osu.Game.Screens.Play
             if (objects == null)
                 return;
 
-            double position = audioClock?.CurrentTime ?? Time.Current;
-            double progress = (position - firstHitTime) / (lastHitTime - firstHitTime);
+            double position = gameplayClock?.CurrentTime ?? Time.Current;
+            double progress = Math.Min(1, (position - firstHitTime) / (lastHitTime - firstHitTime));
 
-            if (progress < 1)
-            {
-                bar.CurrentTime = position;
-                graph.Progress = (int)(graph.ColumnCount * progress);
-            }
+            bar.CurrentTime = position;
+            graph.Progress = (int)(graph.ColumnCount * progress);
         }
     }
 }

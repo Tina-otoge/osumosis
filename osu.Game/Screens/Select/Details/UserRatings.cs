@@ -1,5 +1,5 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -21,25 +21,37 @@ namespace osu.Game.Screens.Select.Details
         private readonly BarGraph graph;
 
         private BeatmapMetrics metrics;
+
         public BeatmapMetrics Metrics
         {
-            get { return metrics; }
+            get => metrics;
             set
             {
                 if (value == metrics) return;
+
                 metrics = value;
 
                 const int rating_range = 10;
 
-                var ratings = Metrics.Ratings.Skip(1).Take(rating_range); // adjust for API returning weird empty data at 0.
+                if (metrics == null)
+                {
+                    negativeRatings.Text = "0";
+                    positiveRatings.Text = "0";
+                    ratingsBar.Length = 0;
+                    graph.Values = new float[rating_range];
+                }
+                else
+                {
+                    var ratings = Metrics.Ratings.Skip(1).Take(rating_range); // adjust for API returning weird empty data at 0.
 
-                var negativeCount = ratings.Take(rating_range / 2).Sum();
-                var totalCount = ratings.Sum();
+                    var negativeCount = ratings.Take(rating_range / 2).Sum();
+                    var totalCount = ratings.Sum();
 
-                negativeRatings.Text = negativeCount.ToString();
-                positiveRatings.Text = (totalCount - negativeCount).ToString();
-                ratingsBar.Length = totalCount == 0 ? 0 : (float)negativeCount / totalCount;
-                graph.Values = ratings.Take(rating_range).Select(r => (float)r);
+                    negativeRatings.Text = negativeCount.ToString();
+                    positiveRatings.Text = (totalCount - negativeCount).ToString();
+                    ratingsBar.Length = totalCount == 0 ? 0 : (float)negativeCount / totalCount;
+                    graph.Values = ratings.Take(rating_range).Select(r => (float)r);
+                }
             }
         }
 
@@ -59,7 +71,7 @@ namespace osu.Game.Screens.Select.Details
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Text = "User Rating",
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13)
                         },
                         ratingsBar = new Bar
                         {
@@ -76,14 +88,14 @@ namespace osu.Game.Screens.Select.Details
                                 negativeRatings = new OsuSpriteText
                                 {
                                     Text = "0",
-                                    TextSize = 13,
+                                    Font = OsuFont.GetFont(size: 13)
                                 },
                                 positiveRatings = new OsuSpriteText
                                 {
                                     Anchor = Anchor.TopRight,
                                     Origin = Anchor.TopRight,
                                     Text = @"0",
-                                    TextSize = 13,
+                                    Font = OsuFont.GetFont(size: 13)
                                 },
                             },
                         },
@@ -92,7 +104,7 @@ namespace osu.Game.Screens.Select.Details
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
                             Text = "Rating Spread",
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13),
                             Margin = new MarginPadding { Top = 10, Bottom = 5 },
                         },
                     },

@@ -1,28 +1,30 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using osu.Framework.Allocation;
-using osu.Framework.Graphics;
-using osu.Framework.Graphics.Shapes;
-using osu.Game.Rulesets.Taiko.Objects;
-using osu.Game.Rulesets.UI;
-using OpenTK;
-using OpenTK.Graphics;
-using osu.Game.Rulesets.Taiko.Judgements;
-using osu.Game.Rulesets.Objects.Drawables;
-using osu.Game.Graphics;
-using osu.Framework.Graphics.Containers;
-using osu.Framework.Extensions.Color4Extensions;
 using System.Linq;
+using osu.Framework.Allocation;
+using osu.Framework.Extensions.Color4Extensions;
+using osu.Framework.Graphics;
+using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Shapes;
+using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Graphics;
+using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Judgements;
+using osu.Game.Rulesets.UI;
+using osu.Game.Rulesets.UI.Scrolling;
+using osu.Game.Rulesets.Taiko.Objects;
 using osu.Game.Rulesets.Taiko.Objects.Drawables;
+using osu.Game.Rulesets.Taiko.Judgements;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Rulesets.Taiko.UI
 {
     public class TaikoPlayfield : ScrollingPlayfield
     {
         /// <summary>
-        /// Default height of a <see cref="TaikoPlayfield"/> when inside a <see cref="TaikoRulesetContainer"/>.
+        /// Default height of a <see cref="TaikoPlayfield"/> when inside a <see cref="DrawableTaikoRuleset"/>.
         /// </summary>
         public const float DEFAULT_HEIGHT = 178;
 
@@ -36,13 +38,10 @@ namespace osu.Game.Rulesets.Taiko.UI
         /// </summary>
         private const float left_area_size = 240;
 
-
         private readonly Container<HitExplosion> hitExplosionContainer;
         private readonly Container<KiaiHitExplosion> kiaiExplosionContainer;
-        private readonly Container<DrawableTaikoJudgement> judgementContainer;
-
-        protected override Container<Drawable> Content => content;
-        private readonly Container content;
+        private readonly JudgementContainer<DrawableTaikoJudgement> judgementContainer;
+        internal readonly HitTarget HitTarget;
 
         private readonly Container topLevelHitContainer;
 
@@ -54,10 +53,9 @@ namespace osu.Game.Rulesets.Taiko.UI
         private readonly Box overlayBackground;
         private readonly Box background;
 
-        public TaikoPlayfield()
-            : base(Axes.X)
+        public TaikoPlayfield(ControlPointInfo controlPoints)
         {
-            AddRangeInternal(new Drawable[]
+            InternalChildren = new Drawable[]
             {
                 backgroundContainer = new Container
                 {
@@ -100,7 +98,7 @@ namespace osu.Game.Rulesets.Taiko.UI
                                     FillMode = FillMode.Fit,
                                     Blending = BlendingMode.Additive,
                                 },
-                                new HitTarget
+                                HitTarget = new HitTarget
                                 {
                                     Anchor = Anchor.CentreLeft,
                                     Origin = Anchor.Centre,
@@ -114,12 +112,13 @@ namespace osu.Game.Rulesets.Taiko.UI
                             RelativeSizeAxes = Axes.Both,
                             Padding = new MarginPadding { Left = HIT_TARGET_OFFSET }
                         },
-                        content = new Container
+                        new Container
                         {
                             Name = "Hit objects",
                             RelativeSizeAxes = Axes.Both,
                             Padding = new MarginPadding { Left = HIT_TARGET_OFFSET },
-                            Masking = true
+                            Masking = true,
+                            Child = HitObjectContainer
                         },
                         kiaiExplosionContainer = new Container<KiaiHitExplosion>
                         {
@@ -129,7 +128,7 @@ namespace osu.Game.Rulesets.Taiko.UI
                             Margin = new MarginPadding { Left = HIT_TARGET_OFFSET },
                             Blending = BlendingMode.Additive
                         },
-                        judgementContainer = new Container<DrawableTaikoJudgement>
+                        judgementContainer = new JudgementContainer<DrawableTaikoJudgement>
                         {
                             Name = "Judgements",
                             RelativeSizeAxes = Axes.Y,
@@ -149,7 +148,7 @@ namespace osu.Game.Rulesets.Taiko.UI
                         {
                             RelativeSizeAxes = Axes.Both,
                         },
-                        new InputDrum
+                        new InputDrum(controlPoints)
                         {
                             Anchor = Anchor.CentreRight,
                             Origin = Anchor.CentreRight,
@@ -188,9 +187,7 @@ namespace osu.Game.Rulesets.Taiko.UI
                     Name = "Top level hit objects",
                     RelativeSizeAxes = Axes.Both,
                 }
-            });
-
-            VisibleTimeRange.Value = 6000;
+            };
         }
 
         [BackgroundDependencyLoader]
@@ -205,57 +202,55 @@ namespace osu.Game.Rulesets.Taiko.UI
 
         public override void Add(DrawableHitObject h)
         {
-            h.Depth = (float)h.HitObject.StartTime;
+            h.OnNewResult += OnNewResult;
 
             base.Add(h);
 
-            var barline = h as DrawableBarLine;
-            if (barline != null)
-                barlineContainer.Add(barline.CreateProxy());
-
-            // Swells should be moved at the very top of the playfield when they reach the hit target
-            var swell = h as DrawableSwell;
-            if (swell != null)
-                swell.OnStart += () => topLevelHitContainer.Add(swell.CreateProxy());
+            switch (h)
+            {
+                case DrawableBarLine barline:
+                    barlineContainer.Add(barline.CreateProxy());
+                    break;
+                case DrawableTaikoHitObject taikoObject:
+                    topLevelHitContainer.Add(taikoObject.CreateProxiedContent());
+                    break;
+            }
         }
 
-        public override void OnJudgement(DrawableHitObject judgedObject, Judgement judgement)
+        internal void OnNewResult(DrawableHitObject judgedObject, JudgementResult result)
         {
-            if (judgedObject.DisplayJudgement && judgementContainer.FirstOrDefault(j => j.JudgedObject == judgedObject) == null)
-            {
-                judgementContainer.Add(new DrawableTaikoJudgement(judgedObject, judgement)
-                {
-                    Anchor = judgement.IsHit ? Anchor.TopLeft : Anchor.CentreLeft,
-                    Origin = judgement.IsHit ? Anchor.BottomCentre : Anchor.Centre,
-                    RelativePositionAxes = Axes.X,
-                    X = judgement.IsHit ? judgedObject.Position.X : 0,
-                });
-            }
-
-            if (!judgement.IsHit)
+            if (!DisplayJudgements.Value)
                 return;
 
-            bool isRim = judgedObject.HitObject is RimHit;
+            if (!judgedObject.DisplayResult)
+                return;
 
-            if (judgement is TaikoStrongHitJudgement)
-                hitExplosionContainer.Children.FirstOrDefault(e => e.JudgedObject == judgedObject)?.VisualiseSecondHit();
-            else
+            switch (result.Judgement)
             {
-                if (judgedObject.X >= -0.05f && judgedObject is DrawableHit)
-                {
-                    // If we're far enough away from the left stage, we should bring outselves in front of it
-                    // Todo: The following try-catch is temporary for replay rewinding support
-                    try
+                case TaikoStrongJudgement _:
+                    if (result.IsHit)
+                        hitExplosionContainer.Children.FirstOrDefault(e => e.JudgedObject == ((DrawableStrongNestedHit)judgedObject).MainObject)?.VisualiseSecondHit();
+                    break;
+                default:
+                    judgementContainer.Add(new DrawableTaikoJudgement(result, judgedObject)
                     {
-                        topLevelHitContainer.Add(judgedObject.CreateProxy());
-                    }
-                    catch { }
-                }
+                        Anchor = result.IsHit ? Anchor.TopLeft : Anchor.CentreLeft,
+                        Origin = result.IsHit ? Anchor.BottomCentre : Anchor.Centre,
+                        RelativePositionAxes = Axes.X,
+                        X = result.IsHit ? judgedObject.Position.X : 0,
+                    });
 
-                hitExplosionContainer.Add(new HitExplosion(judgedObject, isRim));
+                    if (!result.IsHit)
+                        break;
 
-                if (judgedObject.HitObject.Kiai)
-                    kiaiExplosionContainer.Add(new KiaiHitExplosion(judgedObject, isRim));
+                    bool isRim = judgedObject.HitObject is RimHit;
+
+                    hitExplosionContainer.Add(new HitExplosion(judgedObject, isRim));
+
+                    if (judgedObject.HitObject.Kiai)
+                        kiaiExplosionContainer.Add(new KiaiHitExplosion(judgedObject, isRim));
+
+                    break;
             }
         }
     }

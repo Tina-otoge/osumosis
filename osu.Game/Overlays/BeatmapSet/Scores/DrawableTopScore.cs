@@ -1,22 +1,22 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
-using osu.Framework.Input;
+using osu.Framework.Input.Events;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
-using osu.Game.Online.API.Requests;
+using osu.Game.Online.Leaderboards;
 using osu.Game.Overlays.Profile.Sections.Ranks;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.UI;
-using osu.Game.Screens.Select.Leaderboards;
+using osu.Game.Scoring;
 using osu.Game.Users;
 
 namespace osu.Game.Overlays.BeatmapSet.Scores
@@ -42,23 +42,25 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
         private readonly InfoColumn statistics;
         private readonly ScoreModsContainer modsContainer;
 
-        private OnlineScore score;
-        public OnlineScore Score
+        private ScoreInfo score;
+
+        public ScoreInfo Score
         {
-            get { return score; }
+            get => score;
             set
             {
                 if (score == value) return;
+
                 score = value;
 
                 avatar.User = username.User = score.User;
-                flag.FlagName = score.User.Country?.FlagName;
+                flag.Country = score.User.Country;
                 date.Text = $@"achieved {score.Date:MMM d, yyyy}";
                 rank.UpdateRank(score.Rank);
 
                 totalScore.Value = $@"{score.TotalScore:N0}";
                 accuracy.Value = $@"{score.Accuracy:P2}";
-                statistics.Value = $"{score.Statistics["300"]}/{score.Statistics["100"]}/{score.Statistics["50"]}";
+                statistics.Value = $"{score.Statistics[HitResult.Great]}/{score.Statistics[HitResult.Good]}/{score.Statistics[HitResult.Meh]}";
 
                 modsContainer.Clear();
                 foreach (Mod mod in score.Mods)
@@ -116,8 +118,7 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                     Anchor = Anchor.TopRight,
                     Origin = Anchor.BottomRight,
                     Text = "#1",
-                    TextSize = 40,
-                    Font = @"Exo2.0-BoldItalic",
+                    Font = OsuFont.GetFont(size: 40, weight: FontWeight.Bold, italics: true),
                     Y = height / 4,
                     Margin = new MarginPadding { Right = margin }
                 },
@@ -184,16 +185,16 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
             BorderColour = rankText.Colour = colours.Yellow;
         }
 
-        protected override bool OnHover(InputState state)
+        protected override bool OnHover(HoverEvent e)
         {
             background.FadeIn(fade_duration, Easing.OutQuint);
-            return base.OnHover(state);
+            return base.OnHover(e);
         }
 
-        protected override void OnHoverLost(InputState state)
+        protected override void OnHoverLost(HoverLostEvent e)
         {
             background.FadeOut(fade_duration, Easing.OutQuint);
-            base.OnHoverLost(state);
+            base.OnHoverLost(e);
         }
 
         private class InfoColumn : FillFlowContainer
@@ -207,9 +208,10 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                 {
                     if (valueText.Text == value)
                         return;
+
                     valueText.Text = value;
                 }
-                get { return valueText.Text; }
+                get => valueText.Text;
             }
 
             public InfoColumn(string header)
@@ -221,15 +223,10 @@ namespace osu.Game.Overlays.BeatmapSet.Scores
                 {
                     headerText = new OsuSpriteText
                     {
-                        TextSize = 14,
                         Text = header,
-                        Font = @"Exo2.0-Bold",
+                        Font = OsuFont.GetFont(size: 14, weight: FontWeight.Bold)
                     },
-                    valueText = new OsuSpriteText
-                    {
-                        TextSize = 25,
-                        Font = @"Exo2.0-RegularItalic",
-                    }
+                    valueText = new OsuSpriteText { Font = OsuFont.GetFont(size: 25, weight: FontWeight.Regular, italics: true) }
                 };
             }
 

@@ -1,8 +1,8 @@
-﻿// Copyright (c) 2007-2017 ppy Pty Ltd <contact@ppy.sh>.
-// Licensed under the MIT Licence - https://raw.githubusercontent.com/ppy/osu/master/LICENCE
+﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using OpenTK;
-using OpenTK.Graphics;
+using osuTK;
+using osuTK.Graphics;
 using osu.Framework.Allocation;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
@@ -20,12 +20,14 @@ namespace osu.Game.Screens.Select.Details
         private readonly StatisticRow firstValue, hpDrain, accuracy, approachRate, starDifficulty;
 
         private BeatmapInfo beatmap;
+
         public BeatmapInfo Beatmap
         {
-            get { return beatmap; }
+            get => beatmap;
             set
             {
                 if (value == beatmap) return;
+
                 beatmap = value;
 
                 //mania specific
@@ -40,10 +42,10 @@ namespace osu.Game.Screens.Select.Details
                     firstValue.Value = Beatmap?.BaseDifficulty?.CircleSize ?? 0;
                 }
 
-                hpDrain.Value = beatmap.BaseDifficulty?.DrainRate ?? 0;
-                accuracy.Value = beatmap.BaseDifficulty?.OverallDifficulty ?? 0;
-                approachRate.Value = beatmap.BaseDifficulty?.ApproachRate ?? 0;
-                starDifficulty.Value = (float)beatmap.StarDifficulty;
+                hpDrain.Value = Beatmap?.BaseDifficulty?.DrainRate ?? 0;
+                accuracy.Value = Beatmap?.BaseDifficulty?.OverallDifficulty ?? 0;
+                approachRate.Value = Beatmap?.BaseDifficulty?.ApproachRate ?? 0;
+                starDifficulty.Value = (float)(Beatmap?.StarDifficulty ?? 0);
             }
         }
 
@@ -83,14 +85,15 @@ namespace osu.Game.Screens.Select.Details
 
             public string Title
             {
-                get { return name.Text; }
-                set { name.Text = value; }
+                get => name.Text;
+                set => name.Text = value;
             }
 
             private float difficultyValue;
+
             public float Value
             {
-                get { return difficultyValue; }
+                get => difficultyValue;
                 set
                 {
                     difficultyValue = value;
@@ -101,8 +104,8 @@ namespace osu.Game.Screens.Select.Details
 
             public Color4 AccentColour
             {
-                get { return bar.AccentColour; }
-                set { bar.AccentColour = value; }
+                get => bar.AccentColour;
+                set => bar.AccentColour = value;
             }
 
             public StatisticRow(float maxValue = 10, bool forceDecimalPlaces = false)
@@ -120,7 +123,7 @@ namespace osu.Game.Screens.Select.Details
                         AutoSizeAxes = Axes.Y,
                         Child = name = new OsuSpriteText
                         {
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13)
                         },
                     },
                     bar = new Bar
@@ -142,7 +145,7 @@ namespace osu.Game.Screens.Select.Details
                         {
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
-                            TextSize = 13,
+                            Font = OsuFont.GetFont(size: 13)
                         },
                     },
                 };
