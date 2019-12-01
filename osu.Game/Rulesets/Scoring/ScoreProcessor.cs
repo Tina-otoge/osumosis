@@ -429,6 +429,10 @@ namespace osu.Game.Rulesets.Scoring
                 case ScoringMode.Classic:
                     // should emulate osu-stable's scoring as closely as we can (https://osu.ppy.sh/help/wiki/Score/ScoreV1)
                     return bonusScore + baseScore * ((1 + Math.Max(0, HighestCombo.Value - 1) * scoreMultiplier) / 25);
+
+                case ScoringMode.Ex:
+                    // strives to be similar to the beatmania IIDX series
+                    return (baseScore / maxBaseScore) * (maxHighestCombo * 2);
             }
         }
 
@@ -465,6 +469,7 @@ namespace osu.Game.Rulesets.Scoring
     public enum ScoringMode
     {
         Standardised,
-        Classic
+        Classic,
+        Ex
     }
 }
