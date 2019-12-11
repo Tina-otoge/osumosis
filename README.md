@@ -1,3 +1,13 @@
+# About this fork
+
+This is an attempt at making osu! working with non-combo based scoring.
+
+As of now, it adds two features:
+- "Ex scoring", in "Score display mode" select "Ex", this is a score calculation algorithm that does not take the combo into account  
+![](https://pbs.twimg.com/media/ELhD2bGXsAESjHj?format=png&name=large)
+- Score uploading, naive attempt at uploading the score to an external server when completing a song
+
+
 <p align="center">
   <img width="500px" src="assets/lazer.png">
 </p>
