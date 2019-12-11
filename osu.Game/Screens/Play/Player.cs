@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using Newtonsoft.Json;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
@@ -335,6 +337,25 @@ namespace osu.Game.Screens.Play
 
         private ScheduledDelegate completionProgressDelegate;
 
+        private void pushToOsmosis(ScoreInfo score) {
+            Logger.Log("Serializing score for Osmosis...");
+            var json = JsonConvert.SerializeObject(score, Formatting.None,
+                new JsonSerializerSettings()
+                {
+                    ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                }
+            );
+            Logger.Log("Done.");
+
+            Logger.Log("Invoking osmosis_pusher...");
+            ProcessStartInfo start = new ProcessStartInfo();
+            start.UseShellExecute = true;
+            start.FileName = "osmosis_pusher";
+            start.Arguments = json.Replace("\"", "\"\"\"");
+            Process.Start(start);
+            Logger.Log("Done.");
+        }
+
         private void onCompletion()
         {
             // Only show the completion screen if the player hasn't failed
@@ -352,6 +373,7 @@ namespace osu.Game.Screens.Play
                     if (!this.IsCurrentScreen()) return;
 
                     var score = CreateScore();
+                    pushToOsmosis(score);
                     if (DrawableRuleset.ReplayScore == null)
                         scoreManager.Import(score).Wait();
 
