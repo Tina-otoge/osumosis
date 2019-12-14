@@ -19,7 +19,7 @@ namespace osu.Game.Rulesets.Mods
         public override string Description => "Your game, your rules";
 
         [SettingSource("Approach Rate", "You know what this is already")]
-        public BindableNumber<float> approachRate { get; } = new BindableFloat
+        public BindableNumber<float> ApproachRate { get; } = new BindableFloat
         {
             MinValue = 1F,
             MaxValue = 13F,
@@ -30,7 +30,7 @@ namespace osu.Game.Rulesets.Mods
 
         public void ApplyToDifficulty(BeatmapDifficulty difficulty)
         {
-            difficulty.ApproachRate = approachRate.Value;
+            difficulty.ApproachRate = ApproachRate.Value;
         }
     }
 }
