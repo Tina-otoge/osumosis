@@ -22,7 +22,7 @@ namespace osu.Game.Configuration
 
             Set(OsuSetting.BeatmapDetailTab, BeatmapDetailTab.Details);
 
-            Set(OsuSetting.ShowConvertedBeatmaps, true);
+            Set(OsuSetting.ShowConvertedBeatmaps, false);
             Set(OsuSetting.DisplayStarsMinimum, 0.0, 0, 10, 0.1);
             Set(OsuSetting.DisplayStarsMaximum, 10.0, 0, 10, 0.1);
 
