@@ -331,6 +331,9 @@ namespace osu.Game.Rulesets.Scoring
                 case ScoringMode.Ex:
                     // strives to be similar to the beatmania IIDX series
                     return (baseScore / maxBaseScore) * (maxHighestCombo * 2);
+
+                case ScoringMode.Accuracy:
+                    return (baseScore / maxBaseScore) * 1000000;
             }
         }
 
@@ -442,6 +445,7 @@ namespace osu.Game.Rulesets.Scoring
     {
         Standardised,
         Classic,
-        Ex
+        Ex,
+        Accuracy
     }
 }
