@@ -7,6 +7,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Screens;
 using osu.Game.Graphics;
 using osu.Game.Screens.Play;
+using osu.Game.Users;
 using osuTK.Input;
 
 namespace osu.Game.Screens.Select
@@ -18,6 +19,8 @@ namespace osu.Game.Screens.Select
 
         public override bool AllowExternalScreenChange => true;
 
+        protected override UserActivity InitialActivity => new UserActivity.ChoosingBeatmap();
+
         [BackgroundDependencyLoader]
         private void load(OsuColour colours)
         {
@@ -25,7 +28,7 @@ namespace osu.Game.Screens.Select
             {
                 ValidForResume = false;
                 Edit();
-            }, Key.Number3);
+            }, Key.Number4);
         }
 
         public override void OnResuming(IScreen last)
@@ -52,10 +55,11 @@ namespace osu.Game.Screens.Select
                 var auto = Ruleset.Value.CreateInstance().GetAutoplayMod();
                 var autoType = auto.GetType();
 
-                var mods = SelectedMods.Value;
+                var mods = Mods.Value;
+
                 if (mods.All(m => m.GetType() != autoType))
                 {
-                    SelectedMods.Value = mods.Append(auto);
+                    Mods.Value = mods.Append(auto).ToArray();
                     removeAutoModOnResume = true;
                 }
             }

@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -37,7 +38,9 @@ namespace osu.Game.Online.API
 
         public Bindable<User> LocalUser { get; } = new Bindable<User>(createGuestUser());
 
-        protected bool HasLogin => authentication.Token.Value != null || !string.IsNullOrEmpty(ProvidedUsername) && !string.IsNullOrEmpty(password);
+        public Bindable<UserActivity> Activity { get; } = new Bindable<UserActivity>();
+
+        protected bool HasLogin => authentication.Token.Value != null || (!string.IsNullOrEmpty(ProvidedUsername) && !string.IsNullOrEmpty(password));
 
         private readonly CancellationTokenSource cancellationToken = new CancellationTokenSource();
 
@@ -54,6 +57,12 @@ namespace osu.Game.Online.API
 
             authentication.TokenString = config.Get<string>(OsuSetting.Token);
             authentication.Token.ValueChanged += onTokenChanged;
+
+            LocalUser.BindValueChanged(u =>
+            {
+                u.OldValue?.Activity.UnbindFrom(Activity);
+                u.NewValue.Activity.BindTo(Activity);
+            }, true);
 
             var thread = new Thread(run)
             {
@@ -77,13 +86,13 @@ namespace osu.Game.Online.API
         /// <param name="component"></param>
         public void Register(IOnlineComponent component)
         {
-            Scheduler.Add(delegate { components.Add(component); });
+            Schedule(() => components.Add(component));
             component.APIStateChanged(this, state);
         }
 
         public void Unregister(IOnlineComponent component)
         {
-            Scheduler.Add(delegate { components.Remove(component); });
+            Schedule(() => components.Remove(component));
         }
 
         public string AccessToken => authentication.RequestAccessToken();
@@ -113,6 +122,7 @@ namespace osu.Game.Online.API
                         }
 
                         break;
+
                     case APIState.Offline:
                     case APIState.Connecting:
                         //work to restore a connection...
@@ -189,6 +199,22 @@ namespace osu.Game.Online.API
             }
         }
 
+        public void Perform(APIRequest request)
+        {
+            try
+            {
+                request.Perform(this);
+            }
+            catch (Exception e)
+            {
+                // todo: fix exception handling
+                request.Fail(e);
+            }
+        }
+
+        public Task PerformAsync(APIRequest request) =>
+            Task.Factory.StartNew(() => Perform(request), TaskCreationOptions.LongRunning);
+
         public void Login(string username, string password)
         {
             Debug.Assert(State == APIState.Offline);
@@ -218,7 +244,7 @@ namespace osu.Game.Online.API
             {
                 try
                 {
-                    return JObject.Parse(req.ResponseString).SelectToken("form_error", true).ToObject<RegistrationRequest.RegistrationRequestErrors>();
+                    return JObject.Parse(req.GetResponseString()).SelectToken("form_error", true).ToObject<RegistrationRequest.RegistrationRequestErrors>();
                 }
                 catch
                 {
@@ -253,8 +279,9 @@ namespace osu.Game.Online.API
                 handleWebException(we);
                 return false;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
+                Logger.Error(ex, "Error occurred while handling an API request.");
                 return false;
             }
         }
@@ -273,7 +300,7 @@ namespace osu.Game.Online.API
                 state = value;
 
                 log.Add($@"We just went {state}!");
-                Scheduler.Add(delegate
+                Schedule(() =>
                 {
                     components.ForEach(c => c.APIStateChanged(this, state));
                     OnStateChange?.Invoke(oldState, state);
@@ -300,6 +327,7 @@ namespace osu.Game.Online.API
                 case HttpStatusCode.Unauthorized:
                     Logout();
                     return true;
+
                 case HttpStatusCode.RequestTimeout:
                     failureCount++;
                     log.Add($@"API failure count is now {failureCount}");
@@ -350,9 +378,13 @@ namespace osu.Game.Online.API
         public void Logout()
         {
             flushQueue();
+
             password = null;
             authentication.Clear();
-            LocalUser.Value = createGuestUser();
+
+            // Scheduled prior to state change such that the state changed event is invoked with the correct user present
+            Schedule(() => LocalUser.Value = createGuestUser());
+
             State = APIState.Offline;
         }
 

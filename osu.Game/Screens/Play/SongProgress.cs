@@ -10,8 +10,8 @@ using osu.Game.Graphics;
 using osu.Framework.Allocation;
 using System.Linq;
 using osu.Framework.Bindables;
+using osu.Framework.Timing;
 using osu.Game.Rulesets.Objects;
-using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.UI;
 
 namespace osu.Game.Screens.Play
@@ -33,7 +33,8 @@ namespace osu.Game.Screens.Play
         public override bool HandleNonPositionalInput => AllowSeeking;
         public override bool HandlePositionalInput => AllowSeeking;
 
-        private double lastHitTime => ((objects.Last() as IHasEndTime)?.EndTime ?? objects.Last().StartTime) + 1;
+        //TODO: this isn't always correct (consider mania where a non-last object may last for longer than the last in the list).
+        private double lastHitTime => objects.Last().GetEndTime() + 1;
 
         private double firstHitTime => objects.First().StartTime;
 
@@ -55,7 +56,9 @@ namespace osu.Game.Screens.Play
 
         private readonly BindableBool replayLoaded = new BindableBool();
 
-        private GameplayClock gameplayClock;
+        public IClock ReferenceClock;
+
+        private IClock gameplayClock;
 
         [BackgroundDependencyLoader(true)]
         private void load(OsuColour colours, GameplayClock clock)
@@ -103,7 +106,9 @@ namespace osu.Game.Screens.Play
 
         protected override void LoadComplete()
         {
-            State = Visibility.Visible;
+            base.LoadComplete();
+
+            Show();
 
             replayLoaded.ValueChanged += loaded => AllowSeeking = loaded.NewValue;
             replayLoaded.TriggerChange();
@@ -154,10 +159,12 @@ namespace osu.Game.Screens.Play
             if (objects == null)
                 return;
 
-            double position = gameplayClock?.CurrentTime ?? Time.Current;
-            double progress = Math.Min(1, (position - firstHitTime) / (lastHitTime - firstHitTime));
+            double gameplayTime = gameplayClock?.CurrentTime ?? Time.Current;
+            double frameStableTime = ReferenceClock?.CurrentTime ?? gameplayTime;
 
-            bar.CurrentTime = position;
+            double progress = Math.Min(1, (frameStableTime - firstHitTime) / (lastHitTime - firstHitTime));
+
+            bar.CurrentTime = gameplayTime;
             graph.Progress = (int)(graph.ColumnCount * progress);
         }
     }

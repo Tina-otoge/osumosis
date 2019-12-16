@@ -3,15 +3,11 @@
 
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Judgements;
-using osu.Game.Rulesets.Mania.Judgements;
-using osu.Game.Rulesets.Mania.Objects;
-using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Scoring;
-using osu.Game.Rulesets.UI;
 
 namespace osu.Game.Rulesets.Mania.Scoring
 {
-    internal class ManiaScoreProcessor : ScoreProcessor<ManiaHitObject>
+    internal class ManiaScoreProcessor : ScoreProcessor
     {
         /// <summary>
         /// The hit HP multiplier at OD = 0.
@@ -29,36 +25,6 @@ namespace osu.Game.Rulesets.Mania.Scoring
         private const double hp_multiplier_max = 1;
 
         /// <summary>
-        /// The default BAD hit HP increase.
-        /// </summary>
-        private const double hp_increase_bad = 0.005;
-
-        /// <summary>
-        /// The default OK hit HP increase.
-        /// </summary>
-        private const double hp_increase_ok = 0.010;
-
-        /// <summary>
-        /// The default GOOD hit HP increase.
-        /// </summary>
-        private const double hp_increase_good = 0.035;
-
-        /// <summary>
-        /// The default tick hit HP increase.
-        /// </summary>
-        private const double hp_increase_tick = 0.040;
-
-        /// <summary>
-        /// The default GREAT hit HP increase.
-        /// </summary>
-        private const double hp_increase_great = 0.055;
-
-        /// <summary>
-        /// The default PERFECT hit HP increase.
-        /// </summary>
-        private const double hp_increase_perfect = 0.065;
-
-        /// <summary>
         /// The MISS HP multiplier at OD = 0.
         /// </summary>
         private const double hp_multiplier_miss_min = 0.5;
@@ -74,11 +40,6 @@ namespace osu.Game.Rulesets.Mania.Scoring
         private const double hp_multiplier_miss_max = 1;
 
         /// <summary>
-        /// The default MISS HP increase.
-        /// </summary>
-        private const double hp_increase_miss = -0.125;
-
-        /// <summary>
         /// The MISS HP multiplier. This is multiplied to the miss hp increase.
         /// </summary>
         private double hpMissMultiplier = 1;
@@ -88,16 +49,12 @@ namespace osu.Game.Rulesets.Mania.Scoring
         /// </summary>
         private double hpMultiplier = 1;
 
-        public ManiaScoreProcessor()
+        public ManiaScoreProcessor(IBeatmap beatmap)
+            : base(beatmap)
         {
         }
 
-        public ManiaScoreProcessor(DrawableRuleset<ManiaHitObject> drawableRuleset)
-            : base(drawableRuleset)
-        {
-        }
-
-        protected override void ApplyBeatmap(Beatmap<ManiaHitObject> beatmap)
+        protected override void ApplyBeatmap(IBeatmap beatmap)
         {
             base.ApplyBeatmap(beatmap);
 
@@ -106,7 +63,7 @@ namespace osu.Game.Rulesets.Mania.Scoring
             hpMissMultiplier = BeatmapDifficulty.DifficultyRange(difficulty.DrainRate, hp_multiplier_miss_min, hp_multiplier_miss_mid, hp_multiplier_miss_max);
         }
 
-        protected override void SimulateAutoplay(Beatmap<ManiaHitObject> beatmap)
+        protected override void SimulateAutoplay(IBeatmap beatmap)
         {
             while (true)
             {
@@ -122,42 +79,8 @@ namespace osu.Game.Rulesets.Mania.Scoring
             }
         }
 
-        protected override void ApplyResult(JudgementResult result)
-        {
-            base.ApplyResult(result);
-
-            bool isTick = result.Judgement is HoldNoteTickJudgement;
-
-            if (isTick)
-            {
-                if (result.IsHit)
-                    Health.Value += hpMultiplier * hp_increase_tick;
-            }
-            else
-            {
-                switch (result.Type)
-                {
-                    case HitResult.Miss:
-                        Health.Value += hpMissMultiplier * hp_increase_miss;
-                        break;
-                    case HitResult.Meh:
-                        Health.Value += hpMultiplier * hp_increase_bad;
-                        break;
-                    case HitResult.Ok:
-                        Health.Value += hpMultiplier * hp_increase_ok;
-                        break;
-                    case HitResult.Good:
-                        Health.Value += hpMultiplier * hp_increase_good;
-                        break;
-                    case HitResult.Great:
-                        Health.Value += hpMultiplier * hp_increase_great;
-                        break;
-                    case HitResult.Perfect:
-                        Health.Value += hpMultiplier * hp_increase_perfect;
-                        break;
-                }
-            }
-        }
+        protected override double HealthAdjustmentFactorFor(JudgementResult result)
+            => result.Type == HitResult.Miss ? hpMissMultiplier : hpMultiplier;
 
         public override HitWindows CreateHitWindows() => new ManiaHitWindows();
     }

@@ -11,11 +11,14 @@ using osu.Framework.Graphics.Sprites;
 using osu.Game.Graphics;
 using osu.Game.Rulesets.Mods;
 using osuTK;
+using osu.Framework.Bindables;
 
 namespace osu.Game.Rulesets.UI
 {
     public class ModIcon : Container, IHasTooltip
     {
+        public readonly BindableBool Selected = new BindableBool();
+
         private readonly SpriteIcon modIcon;
         private readonly SpriteIcon background;
 
@@ -31,9 +34,11 @@ namespace osu.Game.Rulesets.UI
 
         public virtual string TooltipText { get; }
 
+        protected Mod Mod { get; private set; }
+
         public ModIcon(Mod mod)
         {
-            if (mod == null) throw new ArgumentNullException(nameof(mod));
+            Mod = mod ?? throw new ArgumentNullException(nameof(mod));
 
             type = mod.Type;
 
@@ -49,7 +54,6 @@ namespace osu.Game.Rulesets.UI
                     Anchor = Anchor.Centre,
                     Size = new Vector2(size),
                     Icon = OsuIcon.ModBg,
-                    Y = -6.5f,
                     Shadow = true,
                 },
                 modIcon = new SpriteIcon
@@ -76,43 +80,39 @@ namespace osu.Game.Rulesets.UI
                     backgroundColour = colours.Yellow;
                     highlightedColour = colours.YellowLight;
                     break;
+
                 case ModType.DifficultyReduction:
                     backgroundColour = colours.Green;
                     highlightedColour = colours.GreenLight;
                     break;
+
                 case ModType.Automation:
                     backgroundColour = colours.Blue;
                     highlightedColour = colours.BlueLight;
                     break;
+
                 case ModType.Conversion:
                     backgroundColour = colours.Purple;
                     highlightedColour = colours.PurpleLight;
                     break;
+
                 case ModType.Fun:
                     backgroundColour = colours.Pink;
                     highlightedColour = colours.PinkLight;
                     break;
-            }
 
-            applyStyle();
-        }
-
-        private bool highlighted;
-
-        public bool Highlighted
-        {
-            get => highlighted;
-
-            set
-            {
-                highlighted = value;
-                applyStyle();
+                case ModType.System:
+                    backgroundColour = colours.Gray6;
+                    highlightedColour = colours.Gray7;
+                    modIcon.Colour = colours.Yellow;
+                    break;
             }
         }
 
-        private void applyStyle()
+        protected override void LoadComplete()
         {
-            background.Colour = highlighted ? highlightedColour : backgroundColour;
+            base.LoadComplete();
+            Selected.BindValueChanged(selected => background.Colour = selected.NewValue ? highlightedColour : backgroundColour, true);
         }
     }
 }

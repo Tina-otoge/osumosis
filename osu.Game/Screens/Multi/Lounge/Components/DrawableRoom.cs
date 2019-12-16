@@ -9,6 +9,7 @@ using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Drawables;
@@ -73,7 +74,9 @@ namespace osu.Game.Screens.Multi.Lounge.Components
             set
             {
                 matchingFilter = value;
-                this.FadeTo(MatchingFilter ? 1 : 0, 200);
+
+                if (IsLoaded)
+                    this.FadeTo(MatchingFilter ? 1 : 0, 200);
             }
         }
 
@@ -202,7 +205,11 @@ namespace osu.Game.Screens.Multi.Lounge.Components
         protected override void LoadComplete()
         {
             base.LoadComplete();
-            this.FadeInFromZero(transition_duration);
+
+            if (matchingFilter)
+                this.FadeInFromZero(transition_duration);
+            else
+                Alpha = 0;
         }
 
         private class RoomName : OsuSpriteText
