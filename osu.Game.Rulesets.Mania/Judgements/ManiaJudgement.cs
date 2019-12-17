@@ -20,7 +20,7 @@ namespace osu.Game.Rulesets.Mania.Judgements
                     return 50;
 
                 case HitResult.Good:
-                    return 200;
+                    return 100;
 
                 case HitResult.Great:
                     return 300;
