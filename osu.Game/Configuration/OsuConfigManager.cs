@@ -22,7 +22,7 @@ namespace osu.Game.Configuration
 
             Set(OsuSetting.BeatmapDetailTab, BeatmapDetailTab.Details);
 
-            Set(OsuSetting.ShowConvertedBeatmaps, false);
+            Set(OsuSetting.ShowConvertedBeatmaps, true);
             Set(OsuSetting.DisplayStarsMinimum, 0.0, 0, 10, 0.1);
             Set(OsuSetting.DisplayStarsMaximum, 10.0, 0, 10, 0.1);
 
@@ -82,6 +82,8 @@ namespace osu.Game.Configuration
             Set(OsuSetting.BlurLevel, 0, 0, 1, 0.01);
             Set(OsuSetting.LightenDuringBreaks, true);
 
+            Set(OsuSetting.ShowJudgementDetail, true);
+
             Set(OsuSetting.HitLighting, true);
 
             Set(OsuSetting.ShowInterface, true);
@@ -91,7 +93,7 @@ namespace osu.Game.Configuration
 
             Set(OsuSetting.FloatingComments, false);
 
-            Set(OsuSetting.ScoreDisplayMode, ScoringMode.Accuracy);
+            Set(OsuSetting.ScoreDisplayMode, ScoringMode.Standardised);
 
             Set(OsuSetting.IncreaseFirstObjectVisibility, true);
 
@@ -190,6 +192,7 @@ namespace osu.Game.Configuration
         UIScale,
         IntroSequence,
         UIHoldActivationDelay,
+        ShowJudgementDetail,
         HitLighting,
         MenuBackgroundSource
     }
