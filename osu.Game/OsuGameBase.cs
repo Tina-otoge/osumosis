@@ -110,7 +110,7 @@ namespace osu.Game
 
         public OsuGameBase()
         {
-            Name = @"osu!lazer";
+            Name = @"osumosis";
         }
 
         private DependencyContainer dependencies;
