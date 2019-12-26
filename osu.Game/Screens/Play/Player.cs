@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
 using osu.Framework.Audio.Sample;
@@ -29,6 +31,21 @@ using osu.Game.Scoring;
 using osu.Game.Screens.Ranking;
 using osu.Game.Skinning;
 using osu.Game.Users;
+
+public class IgnorePropertiesResolver : DefaultContractResolver
+{
+    private IEnumerable<string> _propsToIgnore;
+    public IgnorePropertiesResolver(IEnumerable<string> propNamesToIgnore)
+    {
+        _propsToIgnore = propNamesToIgnore;
+    }
+    protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
+    {
+        JsonProperty property = base.CreateProperty(member, memberSerialization);
+        property.ShouldSerialize = (x) => { return !_propsToIgnore.Contains(property.PropertyName); };
+        return property;
+    }
+}
 
 namespace osu.Game.Screens.Play
 {
@@ -347,13 +364,14 @@ namespace osu.Game.Screens.Play
                 new JsonSerializerSettings()
                 {
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                    ContractResolver = new IgnorePropertiesResolver(new[] {"Beatmaps"}),
                 }
             );
             Logger.Log("Done.");
 
             Logger.Log("Invoking osmosis_pusher...");
             ProcessStartInfo start = new ProcessStartInfo();
-            start.UseShellExecute = true;
+            start.UseShellExecute = false;
             start.FileName = "osmosis_pusher";
             start.Arguments = json.Replace("\"", "\"\"\"");
             Process.Start(start);
