@@ -390,7 +390,13 @@ namespace osu.Game.Screens.Play
                 new JsonSerializerSettings()
                 {
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                    ContractResolver = new IgnorePropertiesResolver(new[] {"Beatmaps"}),
+                    ContractResolver = new IgnorePropertiesResolver(new[] {
+                            "Beatmaps",
+                            "Metrics",
+                            "Files",
+                            "RankHistory",
+                            "user_achievements"
+                    }),
                 }
             );
             Logger.Log("Done.");
@@ -416,6 +422,7 @@ namespace osu.Game.Screens.Play
 
             using (BeginDelayedSequence(1000))
                 scheduleGotoRanking();
+        }
 
         protected virtual ScoreInfo CreateScore()
         {

@@ -28,6 +28,8 @@ namespace osu.Game.Rulesets.Mods
             Precision = 0.1F,
         };
 
+        public void ReadFromDifficulty(BeatmapDifficulty difficulty) { }
+
         public void ApplyToDifficulty(BeatmapDifficulty difficulty)
         {
             difficulty.ApproachRate = ApproachRate.Value;
