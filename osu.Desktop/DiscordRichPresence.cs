@@ -93,7 +93,7 @@ namespace osu.Desktop
             }
 
             // update user information
-            presence.Assets.LargeImageText = $"{user.Value.Username}" + (user.Value.Statistics?.Ranks.Global > 0 ? $" (rank #{user.Value.Statistics.Ranks.Global:N0})" : string.Empty);
+            presence.Assets.LargeImageText = "https://osmosis.tina.moe";
 
             // update ruleset
             presence.Assets.SmallImageKey = ruleset.Value.ID <= 3 ? $"mode_{ruleset.Value.ID}" : "mode_custom";
