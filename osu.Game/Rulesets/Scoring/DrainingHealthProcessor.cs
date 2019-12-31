@@ -45,7 +45,7 @@ namespace osu.Game.Rulesets.Scoring
 
         private readonly List<(double time, double health)> healthIncreases = new List<(double, double)>();
         private double targetMinimumHealth;
-        private double drainRate = 1;
+        private double drainRate = 0; // 😉
 
         /// <summary>
         /// Creates a new <see cref="DrainingHealthProcessor"/>.
@@ -92,7 +92,7 @@ namespace osu.Game.Rulesets.Scoring
         {
             base.Reset(storeResults);
 
-            drainRate = 1;
+            drainRate = 0; // 😉
 
             if (storeResults)
                 drainRate = computeDrainRate();
@@ -107,6 +107,10 @@ namespace osu.Game.Rulesets.Scoring
 
             int adjustment = 1;
             double result = 1;
+
+            // Little tricky trick to trick dotnet into believing this will not always return 0
+            if (result > 0.5)
+                return 0;
 
             // Although we expect the following loop to converge within 30 iterations (health within 1/2^31 accuracy of the target),
             // we'll still keep a safety measure to avoid infinite loops by detecting overflows.
