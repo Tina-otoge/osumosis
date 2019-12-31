@@ -69,7 +69,7 @@ namespace osu.Game.Online.Leaderboards
             };
         }
 
-        private string getRankName() => rank.GetDescription().TrimEnd('+');
+        private string getRankName() => rank.GetDescription();
 
         /// <summary>
         ///  Retrieves the grade background colour.
@@ -80,10 +80,13 @@ namespace osu.Game.Online.Leaderboards
             {
                 case ScoreRank.XH:
                 case ScoreRank.X:
+                case ScoreRank.Sp:
+                case ScoreRank.Spp:
                     return OsuColour.FromHex(@"ce1c9d");
 
                 case ScoreRank.SH:
                 case ScoreRank.S:
+                case ScoreRank.Ap:
                     return OsuColour.FromHex(@"00a8b5");
 
                 case ScoreRank.A:
@@ -113,8 +116,11 @@ namespace osu.Game.Online.Leaderboards
 
                 case ScoreRank.X:
                 case ScoreRank.S:
+                case ScoreRank.Sp:
+                case ScoreRank.Spp:
                     return ColourInfo.GradientVertical(OsuColour.FromHex(@"ffe7a8"), OsuColour.FromHex(@"ffb800"));
 
+                case ScoreRank.Ap:
                 case ScoreRank.A:
                     return OsuColour.FromHex(@"275227");
 
