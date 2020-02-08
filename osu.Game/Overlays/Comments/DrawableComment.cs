@@ -16,6 +16,7 @@ using osu.Framework.Graphics.Shapes;
 using System.Linq;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Online.Chat;
+using osu.Framework.Allocation;
 
 namespace osu.Game.Overlays.Comments
 {
@@ -28,20 +29,24 @@ namespace osu.Game.Overlays.Comments
 
         private readonly BindableBool childrenExpanded = new BindableBool(true);
 
-        private readonly FillFlowContainer childCommentsVisibilityContainer;
+        private FillFlowContainer childCommentsVisibilityContainer;
         private readonly Comment comment;
 
         public DrawableComment(Comment comment)
         {
+            this.comment = comment;
+        }
+
+        [BackgroundDependencyLoader]
+        private void load()
+        {
             LinkFlowContainer username;
             FillFlowContainer childCommentsContainer;
-            DeletedChildrenPlaceholder deletedChildrenPlaceholder;
+            DeletedCommentsCounter deletedCommentsCounter;
             FillFlowContainer info;
             LinkFlowContainer message;
             GridContainer content;
             VotePill votePill;
-
-            this.comment = comment;
 
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
@@ -179,7 +184,7 @@ namespace osu.Game.Overlays.Comments
                                 AutoSizeAxes = Axes.Y,
                                 Direction = FillDirection.Vertical
                             },
-                            deletedChildrenPlaceholder = new DeletedChildrenPlaceholder
+                            deletedCommentsCounter = new DeletedCommentsCounter
                             {
                                 ShowDeleted = { BindTarget = ShowDeleted }
                             }
@@ -188,7 +193,7 @@ namespace osu.Game.Overlays.Comments
                 }
             };
 
-            deletedChildrenPlaceholder.DeletedCount.Value = comment.DeletedChildrenCount;
+            deletedCommentsCounter.Count.Value = comment.DeletedChildrenCount;
 
             if (comment.UserId.HasValue)
                 username.AddUserLink(comment.User);
@@ -208,7 +213,7 @@ namespace osu.Game.Overlays.Comments
 
             if (comment.HasMessage)
             {
-                var formattedSource = MessageFormatter.FormatText(comment.GetMessage);
+                var formattedSource = MessageFormatter.FormatText(comment.Message);
                 message.AddLinks(formattedSource.Text, formattedSource.Links);
             }
 
@@ -338,7 +343,7 @@ namespace osu.Game.Overlays.Comments
                 if (parentComment == null)
                     return string.Empty;
 
-                return parentComment.HasMessage ? parentComment.GetMessage : parentComment.IsDeleted ? @"deleted" : string.Empty;
+                return parentComment.HasMessage ? parentComment.Message : parentComment.IsDeleted ? @"deleted" : string.Empty;
             }
         }
     }

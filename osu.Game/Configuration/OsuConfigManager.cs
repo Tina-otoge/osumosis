@@ -24,7 +24,7 @@ namespace osu.Game.Configuration
 
             Set(OsuSetting.ShowConvertedBeatmaps, true);
             Set(OsuSetting.DisplayStarsMinimum, 0.0, 0, 10, 0.1);
-            Set(OsuSetting.DisplayStarsMaximum, 10.0, 0, 10, 0.1);
+            Set(OsuSetting.DisplayStarsMaximum, 10.1, 0, 10.1, 0.1);
 
             Set(OsuSetting.SongSelectGroupingMode, GroupMode.All);
             Set(OsuSetting.SongSelectSortingMode, SortMode.Title);
@@ -78,7 +78,7 @@ namespace osu.Game.Configuration
             Set(OsuSetting.MenuParallax, true);
 
             // Gameplay
-            Set(OsuSetting.DimLevel, 0.3, 0, 1, 0.01);
+            Set(OsuSetting.DimLevel, 0.8, 0, 1, 0.01);
             Set(OsuSetting.BlurLevel, 0, 0, 1, 0.01);
             Set(OsuSetting.LightenDuringBreaks, true);
 
@@ -87,6 +87,7 @@ namespace osu.Game.Configuration
             Set(OsuSetting.HitLighting, true);
 
             Set(OsuSetting.ShowInterface, true);
+            Set(OsuSetting.ShowProgressGraph, true);
             Set(OsuSetting.ShowHealthDisplayWhenCantFail, true);
             Set(OsuSetting.KeyOverlay, false);
             Set(OsuSetting.ScoreMeter, ScoreMeterType.HitErrorBoth);
@@ -152,6 +153,7 @@ namespace osu.Game.Configuration
         ScoreMeter,
         FloatingComments,
         ShowInterface,
+        ShowProgressGraph,
         ShowHealthDisplayWhenCantFail,
         MouseDisableButtons,
         MouseDisableWheel,
