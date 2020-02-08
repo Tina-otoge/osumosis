@@ -14,7 +14,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => "Approach Rate";
         public override string Acronym => "AR";
-        public override IconUsage Icon => FontAwesome.Regular.Circle;
+        public override IconUsage? Icon => FontAwesome.Regular.Circle;
         public override ModType Type => ModType.Conversion;
         public override string Description => "Your game, your rules";
 
