@@ -84,7 +84,8 @@ namespace osu.Game.Screens.Play
 
         private Ruleset ruleset;
 
-        private IAPIProvider api;
+        [Resolved]
+        private IAPIProvider api { get; set; }
 
         private SampleChannel sampleRestart;
 
@@ -129,11 +130,16 @@ namespace osu.Game.Screens.Play
             this.showResults = showResults;
         }
 
-        [BackgroundDependencyLoader]
-        private void load(AudioManager audio, IAPIProvider api, OsuConfigManager config)
-        {
-            this.api = api;
+        private GameplayBeatmap gameplayBeatmap;
 
+        private DependencyContainer dependencies;
+
+        protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
+            => dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+
+        [BackgroundDependencyLoader]
+        private void load(AudioManager audio, OsuConfigManager config)
+        {
             Mods.Value = base.Mods.Value.Select(m => m.CreateCopy()).ToArray();
 
             if (Beatmap.Value is DummyWorkingBeatmap)
@@ -161,6 +167,10 @@ namespace osu.Game.Screens.Play
                 config.BindWith(OsuSetting.ScoreDisplayMode, ScoreProcessor.Mode);
 
             InternalChild = GameplayClockContainer = new GameplayClockContainer(Beatmap.Value, Mods.Value, DrawableRuleset.GameplayStartTime);
+
+            AddInternal(gameplayBeatmap = new GameplayBeatmap(playableBeatmap));
+
+            dependencies.CacheAs(gameplayBeatmap);
 
             addUnderlayComponents(GameplayClockContainer);
             addGameplayComponents(GameplayClockContainer, Beatmap.Value);

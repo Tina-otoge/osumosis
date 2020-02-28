@@ -23,13 +23,15 @@ namespace osu.Game.Screens.Multi.Lounge
         protected readonly FilterControl Filter;
 
         private readonly Container content;
-        private readonly ProcessingOverlay processingOverlay;
+        private readonly LoadingLayer loadingLayer;
 
         [Resolved]
         private Bindable<Room> currentRoom { get; set; }
 
         public LoungeSubScreen()
         {
+            SearchContainer searchContainer;
+
             InternalChildren = new Drawable[]
             {
                 Filter = new FilterControl { Depth = -1 },
@@ -49,14 +51,14 @@ namespace osu.Game.Screens.Multi.Lounge
                                     RelativeSizeAxes = Axes.Both,
                                     ScrollbarOverlapsContent = false,
                                     Padding = new MarginPadding(10),
-                                    Child = new SearchContainer
+                                    Child = searchContainer = new SearchContainer
                                     {
                                         RelativeSizeAxes = Axes.X,
                                         AutoSizeAxes = Axes.Y,
                                         Child = new RoomsContainer { JoinRequested = joinRequested }
                                     },
                                 },
-                                processingOverlay = new ProcessingOverlay { Alpha = 0 }
+                                loadingLayer = new LoadingLayer(searchContainer),
                             }
                         },
                         new RoomInspector
@@ -124,12 +126,12 @@ namespace osu.Game.Screens.Multi.Lounge
 
         private void joinRequested(Room room)
         {
-            processingOverlay.Show();
+            loadingLayer.Show();
             RoomManager?.JoinRoom(room, r =>
             {
                 Open(room);
-                processingOverlay.Hide();
-            }, _ => processingOverlay.Hide());
+                loadingLayer.Hide();
+            }, _ => loadingLayer.Hide());
         }
 
         /// <summary>

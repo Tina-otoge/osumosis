@@ -150,10 +150,8 @@ namespace osu.Game
             dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
         [BackgroundDependencyLoader]
-        private void load(FrameworkConfigManager frameworkConfig)
+        private void load()
         {
-            this.frameworkConfig = frameworkConfig;
-
             if (!Host.IsPrimaryInstance && !DebugUtils.IsDebugBuild)
             {
                 Logger.Log(@"osu! does not support multiple running instances.", LoggingTarget.Runtime, LogLevel.Error);
@@ -401,15 +399,14 @@ namespace osu.Game
             if (nextBeatmap?.Track != null)
                 nextBeatmap.Track.Completed += currentTrackCompleted;
 
-            using (var oldBeatmap = beatmap.OldValue)
-            {
-                if (oldBeatmap?.Track != null)
-                    oldBeatmap.Track.Completed -= currentTrackCompleted;
-            }
+            var oldBeatmap = beatmap.OldValue;
+            if (oldBeatmap?.Track != null)
+                oldBeatmap.Track.Completed -= currentTrackCompleted;
 
             updateModDefaults();
 
-            nextBeatmap?.LoadBeatmapAsync();
+            oldBeatmap?.CancelAsyncLoad();
+            nextBeatmap?.BeginAsyncLoad();
         }
 
         private void modsChanged(ValueChangedEvent<IReadOnlyList<Mod>> mods)
@@ -446,7 +443,7 @@ namespace osu.Game
         /// </summary>
         /// <param name="action">The action to perform once we are in the correct state.</param>
         /// <param name="validScreens">An optional collection of valid screen types. If any of these screens are already current we can perform the action immediately, else the first valid parent will be made current before performing the action. <see cref="MainMenu"/> is used if not specified.</param>
-        protected void PerformFromScreen(Action<IScreen> action, IEnumerable<Type> validScreens = null)
+        public void PerformFromScreen(Action<IScreen> action, IEnumerable<Type> validScreens = null)
         {
             performFromMainMenuTask?.Cancel();
 
@@ -601,6 +598,7 @@ namespace osu.Game
             //overlay elements
             loadComponentSingleFile(direct = new DirectOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(social = new SocialOverlay(), overlayContent.Add, true);
+            var rankingsOverlay = loadComponentSingleFile(new RankingsOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(channelManager = new ChannelManager(), AddInternal, true);
             loadComponentSingleFile(chatOverlay = new ChatOverlay(), overlayContent.Add, true);
             loadComponentSingleFile(Settings = new SettingsOverlay { GetToolbarHeight = () => ToolbarOffset }, leftFloatingOverlayContent.Add, true);
@@ -657,7 +655,7 @@ namespace osu.Game
             }
 
             // ensure only one of these overlays are open at once.
-            var singleDisplayOverlays = new OverlayContainer[] { chatOverlay, social, direct, changelogOverlay };
+            var singleDisplayOverlays = new OverlayContainer[] { chatOverlay, social, direct, changelogOverlay, rankingsOverlay };
 
             foreach (var overlay in singleDisplayOverlays)
             {
@@ -882,7 +880,8 @@ namespace osu.Game
 
         private Container topMostOverlayContent;
 
-        private FrameworkConfigManager frameworkConfig;
+        [Resolved]
+        private FrameworkConfigManager frameworkConfig { get; set; }
 
         private ScalingContainer screenContainer;
 

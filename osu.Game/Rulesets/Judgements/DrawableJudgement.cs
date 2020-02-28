@@ -24,7 +24,8 @@ namespace osu.Game.Rulesets.Judgements
     {
         private const float judgement_size = 128;
 
-        private OsuColour colours;
+        [Resolved]
+        private OsuColour colours { get; set; }
 
         protected readonly JudgementResult Result;
         protected readonly HitDetail Detail;
@@ -60,10 +61,8 @@ namespace osu.Game.Rulesets.Judgements
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours, OsuConfigManager config)
+        private void load(OsuConfigManager config)
         {
-            this.colours = colours;
-
             if (config.Get<bool>(OsuSetting.ShowJudgementDetail)) {
                 InternalChild = JudgementBody = new Container
                 {
