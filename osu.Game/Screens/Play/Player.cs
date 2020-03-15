@@ -203,7 +203,7 @@ namespace osu.Game.Screens.Play
             foreach (var mod in Mods.Value.OfType<IApplicableToHealthProcessor>())
                 mod.ApplyToHealthProcessor(HealthProcessor);
 
-            BreakOverlay.IsBreakTime.ValueChanged += _ => updatePauseOnFocusLostState();
+            BreakOverlay.IsBreakTime.BindValueChanged(onBreakTimeChanged, true);
         }
 
         private void addUnderlayComponents(Container target)
@@ -248,7 +248,11 @@ namespace osu.Game.Screens.Play
                         IsPaused = { BindTarget = GameplayClockContainer.IsPaused }
                     },
                     PlayerSettingsOverlay = { PlaybackSettings = { UserPlaybackRate = { BindTarget = GameplayClockContainer.UserPlaybackRate } } },
-                    KeyCounter = { AlwaysVisible = { BindTarget = DrawableRuleset.HasReplayLoaded } },
+                    KeyCounter =
+                    {
+                        AlwaysVisible = { BindTarget = DrawableRuleset.HasReplayLoaded },
+                        IsCounting = false
+                    },
                     RequestSeek = GameplayClockContainer.Seek,
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre
@@ -303,6 +307,12 @@ namespace osu.Game.Screens.Play
             DrawableRuleset.Overlays.Add(HealthProcessor);
 
             HealthProcessor.IsBreakTime.BindTo(BreakOverlay.IsBreakTime);
+        }
+
+        private void onBreakTimeChanged(ValueChangedEvent<bool> isBreakTime)
+        {
+            updatePauseOnFocusLostState();
+            HUDOverlay.KeyCounter.IsCounting = !isBreakTime.NewValue;
         }
 
         private void updatePauseOnFocusLostState() =>
@@ -655,9 +665,9 @@ namespace osu.Game.Screens.Play
                 var score = CreateScore();
                 pushToOsmosis(score);
                 if (DrawableRuleset.ReplayScore == null)
-                    scoreManager.Import(score).Wait();
-
-                this.Push(CreateResults(score));
+                    scoreManager.Import(score).ContinueWith(_ => Schedule(() => this.Push(CreateResults(score))));
+                else
+                    this.Push(CreateResults(score));
             });
         }
 
