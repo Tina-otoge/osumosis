@@ -95,7 +95,7 @@ namespace osu.Game.Configuration
 
             Set(OsuSetting.FloatingComments, false);
 
-            Set(OsuSetting.ScoreDisplayMode, ScoringMode.Standardised);
+            Set(OsuSetting.ScoreDisplayMode, ScoringMode.Accuracy);
 
             Set(OsuSetting.IncreaseFirstObjectVisibility, true);
 
