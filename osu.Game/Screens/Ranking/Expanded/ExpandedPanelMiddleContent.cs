@@ -56,7 +56,7 @@ namespace osu.Game.Screens.Ranking.Expanded
             var topStatistics = new List<StatisticDisplay>
             {
                 new AccuracyStatistic(score.Accuracy),
-                new ComboStatistic(score.MaxCombo, true),
+                new ComboStatistic(score.MaxCombo, false), // Do not display perfect instead of showing it always lol fix your shit
                 new CounterStatistic("pp", (int)(score.PP ?? 0)),
             };
 
