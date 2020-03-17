@@ -132,6 +132,11 @@ namespace osu.Game.Screens.Ranking.Expanded.Accuracy
                 flash.FadeIn().Then().FadeOut(3000);
                 superFlash.FadeIn().Then().FadeOut(800, Easing.OutQuint);
             }
+
+            if (rank == ScoreRank.Spp)
+            {
+                rankText.ScaleTo(0.8f);
+            }
         }
     }
 }
