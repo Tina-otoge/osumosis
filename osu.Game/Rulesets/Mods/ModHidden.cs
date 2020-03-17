@@ -13,7 +13,7 @@ using osu.Game.Scoring;
 
 namespace osu.Game.Rulesets.Mods
 {
-    public abstract class ModHidden : Mod, IReadFromConfig, IApplicableToDrawableHitObjects, IApplicableToScoreProcessor
+    public abstract class ModHidden : Mod, IReadFromConfig, IApplicableToDrawableHitObjects
     {
         public override string Name => "Hidden";
         public override string Acronym => "HD";
@@ -32,27 +32,6 @@ namespace osu.Game.Rulesets.Mods
         {
             foreach (var d in drawables.Skip(IncreaseFirstObjectVisibility.Value ? 1 : 0))
                 d.ApplyCustomUpdateState += ApplyHiddenState;
-        }
-
-        public void ApplyToScoreProcessor(ScoreProcessor scoreProcessor)
-        {
-            // Default value of ScoreProcessor's Rank in Hidden Mod should be SS+
-            scoreProcessor.Rank.Value = ScoreRank.XH;
-        }
-
-        public ScoreRank AdjustRank(ScoreRank rank, double accuracy)
-        {
-            switch (rank)
-            {
-                case ScoreRank.X:
-                    return ScoreRank.XH;
-
-                case ScoreRank.S:
-                    return ScoreRank.SH;
-
-                default:
-                    return rank;
-            }
         }
 
         protected virtual void ApplyHiddenState(DrawableHitObject hitObject, ArmedState state)

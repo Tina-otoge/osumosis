@@ -46,13 +46,14 @@ namespace osu.Game.Graphics
             switch (rank)
             {
                 case ScoreRank.XH:
+                case ScoreRank.SH:
                 case ScoreRank.X:
                     return Color4Extensions.FromHex(@"ce1c9d");
-
-                case ScoreRank.SH:
+                case ScoreRank.Spp:
+                case ScoreRank.Sp:
                 case ScoreRank.S:
                     return Color4Extensions.FromHex(@"00a8b5");
-
+                case ScoreRank.Ap:
                 case ScoreRank.A:
                     return Color4Extensions.FromHex(@"7cce14");
 

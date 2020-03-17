@@ -22,13 +22,13 @@ namespace osu.Game.Scoring
         [Description(@"S")]
         S,
 
-        [Description(@"X")]
+        [Description(@"S")]
         SH,
 
         [Description(@"SS")]
         X,
 
-        [Description(@"XX")]
+        [Description(@"SS")]
         XH,
 
         [Description(@"A+")]
