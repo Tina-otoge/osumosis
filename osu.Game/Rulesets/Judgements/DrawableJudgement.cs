@@ -82,7 +82,7 @@ namespace osu.Game.Rulesets.Judgements
                             Text = detailText(Result),
                             Font = OsuFont.Numeric.With(size: 15),
                             Y = -20,
-                            Colour = detailColour(Detail),
+                            Colour = colours.ForDetailResult(Detail),
                             Scale = new Vector2(0.7f, 1),
                         }, confineMode: ConfineMode.NoScaling)
                     }
@@ -142,21 +142,6 @@ namespace osu.Game.Rulesets.Judgements
             }
 
             Expire(true);
-        }
-
-        private Color4 detailColour(HitDetail detail)
-        {
-            switch (detail)
-            {
-                case HitDetail.Fast:
-                    return colours.Cyan;
-
-                case HitDetail.Slow:
-                    return colours.RedLight;
-
-                default:
-                    return Color4.White;
-            }
         }
 
         private string detailText(JudgementResult result)

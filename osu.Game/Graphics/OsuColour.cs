@@ -47,7 +47,6 @@ namespace osu.Game.Graphics
             switch (rank)
             {
                 case ScoreRank.XH:
-                case ScoreRank.SH:
                 case ScoreRank.X:
                     return Color4Extensions.FromHex(@"00a8b5");
                 case ScoreRank.SH:
@@ -79,22 +78,37 @@ namespace osu.Game.Graphics
             {
                 case HitResult.Perfect:
                 case HitResult.Great:
-                    return Blue;
-
+                    return this.Blue;
                 case HitResult.Ok:
                 case HitResult.Good:
-                    return Green;
+                    return this.Green;
 
                 case HitResult.Meh:
-                    return Yellow;
+                    return this.Yellow;
 
                 case HitResult.Miss:
-                    return Red;
+                    return this.Red;
 
                 default:
                     return Color4.White;
             }
         }
+
+        public Color4 ForDetailResult(HitDetail detail)
+        {
+            switch (detail)
+            {
+                case HitDetail.Fast:
+                    return this.BlueLight;
+
+                case HitDetail.Slow:
+                    return this.RedLight;
+
+                default:
+                    return Color4.White;
+            }
+        }
+
 
         // See https://github.com/ppy/osu-web/blob/master/resources/assets/less/colors.less
         public readonly Color4 PurpleLighter = Color4Extensions.FromHex(@"eeeeff");
