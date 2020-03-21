@@ -432,6 +432,10 @@ namespace osu.Game.Screens.Play
 
         private void onCompletion()
         {
+            // screen may be in the exiting transition phase.
+            if (!this.IsCurrentScreen())
+                return;
+
             // Only show the completion screen if the player hasn't failed
             if (HealthProcessor.HasFailed || completionProgressDelegate != null)
                 return;
@@ -626,7 +630,7 @@ namespace osu.Game.Screens.Play
             if (completionProgressDelegate != null && !completionProgressDelegate.Cancelled && !completionProgressDelegate.Completed)
             {
                 // proceed to result screen if beatmap already finished playing
-                scheduleGotoRanking();
+                completionProgressDelegate.RunTask();
                 return true;
             }
 
@@ -669,7 +673,14 @@ namespace osu.Game.Screens.Play
                 var score = CreateScore();
                 pushToOsmosis(score);
                 if (DrawableRuleset.ReplayScore == null)
-                    scoreManager.Import(score).ContinueWith(_ => Schedule(() => this.Push(CreateResults(score))));
+                {
+                    scoreManager.Import(score).ContinueWith(_ => Schedule(() =>
+                    {
+                        // screen may be in the exiting transition phase.
+                        if (this.IsCurrentScreen())
+                            this.Push(CreateResults(score));
+                    }));
+                }
                 else
                     this.Push(CreateResults(score));
             });

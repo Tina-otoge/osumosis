@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Localisation;
@@ -14,6 +13,7 @@ using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play.HUD;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
@@ -51,18 +51,18 @@ namespace osu.Game.Screens.Ranking.Expanded
         {
             var beatmap = working.Value.BeatmapInfo;
             var metadata = beatmap.Metadata;
-            var creator = beatmap.Metadata.Author?.Username;
+            var creator = metadata.Author?.Username;
 
             var topStatistics = new List<StatisticDisplay>
             {
                 new AccuracyStatistic(score.Accuracy),
-                new ComboStatistic(score.MaxCombo, false), // Do not display perfect instead of showing it always lol fix your shit
+                new ComboStatistic(score.MaxCombo, !score.Statistics.TryGetValue(HitResult.Miss, out var missCount) || missCount == 0),
                 new CounterStatistic("pp", (int)(score.PP ?? 0)),
             };
 
             var bottomStatistics = new List<StatisticDisplay>();
             foreach (var stat in score.SortedStatistics)
-                bottomStatistics.Add(new CounterStatistic(stat.Key.GetDescription(), stat.Value));
+                bottomStatistics.Add(new HitResultStatistic(stat.Key, stat.Value));
 
             statisticDisplays.AddRange(topStatistics);
             statisticDisplays.AddRange(bottomStatistics);
@@ -87,14 +87,14 @@ namespace osu.Game.Screens.Ranking.Expanded
                             {
                                 Anchor = Anchor.TopCentre,
                                 Origin = Anchor.TopCentre,
-                                Text = new LocalisedString((metadata.Title, metadata.TitleUnicode)),
+                                Text = new LocalisedString((metadata.TitleUnicode, metadata.Title)),
                                 Font = OsuFont.Torus.With(size: 20, weight: FontWeight.SemiBold),
                             },
                             new OsuSpriteText
                             {
                                 Anchor = Anchor.TopCentre,
                                 Origin = Anchor.TopCentre,
-                                Text = new LocalisedString((metadata.Artist, metadata.ArtistUnicode)),
+                                Text = new LocalisedString((metadata.ArtistUnicode, metadata.Artist)),
                                 Font = OsuFont.Torus.With(size: 14, weight: FontWeight.SemiBold)
                             },
                             new Container
@@ -159,6 +159,8 @@ namespace osu.Game.Screens.Ranking.Expanded
                                     },
                                     new OsuTextFlowContainer(s => s.Font = OsuFont.Torus.With(size: 12))
                                     {
+                                        Anchor = Anchor.TopCentre,
+                                        Origin = Anchor.TopCentre,
                                         AutoSizeAxes = Axes.Both,
                                         Direction = FillDirection.Horizontal,
                                     }.With(t =>
@@ -202,6 +204,13 @@ namespace osu.Game.Screens.Ranking.Expanded
                                 }
                             }
                         }
+                    },
+                    new OsuSpriteText
+                    {
+                        Anchor = Anchor.TopCentre,
+                        Origin = Anchor.TopCentre,
+                        Font = OsuFont.GetFont(size: 10, weight: FontWeight.SemiBold),
+                        Text = $"Played on {score.Date.ToLocalTime():g}"
                     }
                 }
             };
