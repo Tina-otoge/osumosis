@@ -30,6 +30,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
         public readonly SkinnableDrawable CirclePiece;
         private readonly Container scaleContainer;
 
+        protected virtual OsuSkinComponents CirclePieceComponent => OsuSkinComponents.HitCircle;
+
         public DrawableHitCircle(HitCircle h)
             : base(h)
         {
@@ -57,7 +59,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                                 return true;
                             },
                         },
-                        CirclePiece = new SkinnableDrawable(new OsuSkinComponent(OsuSkinComponents.HitCircle), _ => new MainCirclePiece()),
+                        CirclePiece = new SkinnableDrawable(new OsuSkinComponent(CirclePieceComponent), _ => new MainCirclePiece()),
                         ApproachCircle = new ApproachCircle
                         {
                             Alpha = 0,
@@ -118,7 +120,7 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
 
             var result = HitObject.HitWindows.ResultFor(timeOffset);
 
-            if (result == HitResult.None)
+            if (result == HitResult.None || CheckHittable?.Invoke(this, Time.Current) == false)
             {
                 Shake(Math.Abs(timeOffset) - HitObject.HitWindows.WindowFor(HitResult.Miss));
                 return;
