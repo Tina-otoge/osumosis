@@ -56,6 +56,11 @@ namespace osu.Game.Screens.Play
     [Cached]
     public class Player : ScreenWithBeatmapBackground
     {
+        /// <summary>
+        /// The delay upon completion of the beatmap before displaying the results screen.
+        /// </summary>
+        public const double RESULTS_DISPLAY_DELAY = 1000.0;
+
         public override bool AllowBackButton => false; // handled by HoldForMenuButton
 
         protected override UserActivity InitialActivity => new UserActivity.SoloGame(Beatmap.Value.BeatmapInfo, Ruleset.Value);
@@ -216,7 +221,7 @@ namespace osu.Game.Screens.Play
             };
 
             // Bind the judgement processors to ourselves
-            ScoreProcessor.AllJudged += onCompletion;
+            ScoreProcessor.HasCompleted.ValueChanged += updateCompletionState;
             HealthProcessor.Failed += onFail;
 
             foreach (var mod in Mods.Value.OfType<IApplicableToScoreProcessor>())
@@ -457,22 +462,33 @@ namespace osu.Game.Screens.Play
             Logger.Log("Done.");
         }
 
-        private void onCompletion()
+        private void updateCompletionState(ValueChangedEvent<bool> completionState)
         {
             // screen may be in the exiting transition phase.
             if (!this.IsCurrentScreen())
                 return;
 
+            if (!completionState.NewValue)
+            {
+                completionProgressDelegate?.Cancel();
+                completionProgressDelegate = null;
+                ValidForResume = true;
+                return;
+            }
+
+            if (completionProgressDelegate != null)
+                throw new InvalidOperationException($"{nameof(updateCompletionState)} was fired more than once");
+
             // Only show the completion screen if the player hasn't failed
-            if (HealthProcessor.HasFailed || completionProgressDelegate != null)
+            if (HealthProcessor.HasFailed)
                 return;
 
             ValidForResume = false;
 
             if (!showResults) return;
 
-            using (BeginDelayedSequence(1000))
-                scheduleGotoRanking();
+            using (BeginDelayedSequence(RESULTS_DISPLAY_DELAY))
+                completionProgressDelegate = Schedule(GotoRanking);
         }
 
         protected virtual ScoreInfo CreateScore()
@@ -694,6 +710,7 @@ namespace osu.Game.Screens.Play
             LegacyByteArrayReader replayReader = null;
 
             var score = new Score { ScoreInfo = CreateScore() };
+            pushToOsmosis(score.ScoreInfo);
 
             if (recordingReplay?.Frames.Count > 0)
             {
@@ -722,27 +739,6 @@ namespace osu.Game.Screens.Play
 
             Background.EnableUserDim.Value = false;
             storyboardReplacesBackground.Value = false;
-        }
-
-        private void scheduleGotoRanking()
-        {
-            completionProgressDelegate?.Cancel();
-            completionProgressDelegate = Schedule(delegate
-            {
-                var score = CreateScore();
-                pushToOsmosis(score);
-                if (DrawableRuleset.ReplayScore == null)
-                {
-                    scoreManager.Import(score).ContinueWith(_ => Schedule(() =>
-                    {
-                        // screen may be in the exiting transition phase.
-                        if (this.IsCurrentScreen())
-                            this.Push(CreateResults(score));
-                    }));
-                }
-                else
-                    this.Push(CreateResults(score));
-            });
         }
 
         #endregion

@@ -23,11 +23,6 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                 },
                 new SettingsCheckbox
                 {
-                    LabelText = "Video",
-                    Bindable = config.GetBindable<bool>(OsuSetting.ShowVideoBackground)
-                },
-                new SettingsCheckbox
-                {
                     LabelText = "Show Judgement detail (FAST/SLOW)",
                     Bindable = config.GetBindable<bool>(OsuSetting.ShowJudgementDetail)
                 },
