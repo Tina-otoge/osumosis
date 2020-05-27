@@ -32,6 +32,11 @@ namespace osu.Game.Scoring
         [Column(TypeName = "DECIMAL(1,4)")]
         public double Accuracy { get; set; }
 
+        // osmosis
+        [JsonProperty("full_accuracy")]
+        [NotMapped]
+        public double FullAccuracy { get; set; }
+
         [JsonIgnore]
         public string DisplayAccuracy => Accuracy.FormatAccuracy();
 

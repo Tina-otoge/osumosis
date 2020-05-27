@@ -255,6 +255,8 @@ namespace osu.Game.Rulesets.Scoring
             score.Accuracy = Math.Round(Accuracy.Value, 4);
             score.Rank = Rank.Value;
             score.Date = DateTimeOffset.Now;
+            // osmosis
+            score.FullAccuracy = Accuracy.Value;
 
             var hitWindows = CreateHitWindows();
 
