@@ -181,7 +181,7 @@ namespace osu.Game.Rulesets.Scoring
                     return (baseScore / maxBaseScore) * (maxHighestCombo * 2);
 
                 case ScoringMode.Accuracy:
-                    return (baseScore / maxBaseScore) * 1000000;
+                    return (baseScore / maxBaseScore) * max_score;
             }
         }
 
