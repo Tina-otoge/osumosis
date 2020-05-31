@@ -12,16 +12,17 @@ namespace osu.Game.Rulesets.Mods
 {
     public abstract class ModApproachRate : Mod, IApplicableToDifficulty
     {
-        public override string Name => "Approach Rate";
+        public override string Name => "Custom AR";
         public override string Acronym => "AR";
         public override IconUsage? Icon => FontAwesome.Regular.Circle;
         public override ModType Type => ModType.Conversion;
         public override string Description => "Your game, your rules";
+        public override bool Ranked => true;
 
         [SettingSource("Approach Rate", "You know what this is already")]
         public BindableNumber<float> ApproachRate { get; } = new BindableFloat
         {
-            MinValue = 1F,
+            MinValue = -10F,
             MaxValue = 13F,
             Default = 9F,
             Value = 9F,
