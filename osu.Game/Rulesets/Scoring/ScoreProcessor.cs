@@ -76,15 +76,15 @@ namespace osu.Game.Rulesets.Scoring
             };
 
             Mode.ValueChanged += _ => updateScore();
-            Mods.ValueChanged += mods =>
-            {
-                scoreMultiplier = 1;
+            /* Mods.ValueChanged += mods => */
+            /* { */
+            /*     scoreMultiplier = 1; */
 
-                foreach (var m in mods.NewValue)
-                    scoreMultiplier *= m.ScoreMultiplier;
+            /*     foreach (var m in mods.NewValue) */
+            /*         scoreMultiplier *= m.ScoreMultiplier; */
 
-                updateScore();
-            };
+            /*     updateScore(); */
+            /* }; */
         }
 
         private readonly Dictionary<HitResult, int> scoreResultCounts = new Dictionary<HitResult, int>();
