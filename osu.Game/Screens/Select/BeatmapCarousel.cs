@@ -131,7 +131,7 @@ namespace osu.Game.Screens.Select
 
         private CarouselRoot root;
 
-        private IBindable<WeakReference<BeatmapSetInfo>> itemAdded;
+        private IBindable<WeakReference<BeatmapSetInfo>> itemUpdated;
         private IBindable<WeakReference<BeatmapSetInfo>> itemRemoved;
         private IBindable<WeakReference<BeatmapInfo>> itemHidden;
         private IBindable<WeakReference<BeatmapInfo>> itemRestored;
@@ -166,8 +166,8 @@ namespace osu.Game.Screens.Select
             RightClickScrollingEnabled.ValueChanged += enabled => scroll.RightMouseScrollbar = enabled.NewValue;
             RightClickScrollingEnabled.TriggerChange();
 
-            itemAdded = beatmaps.ItemAdded.GetBoundCopy();
-            itemAdded.BindValueChanged(beatmapAdded);
+            itemUpdated = beatmaps.ItemUpdated.GetBoundCopy();
+            itemUpdated.BindValueChanged(beatmapUpdated);
             itemRemoved = beatmaps.ItemRemoved.GetBoundCopy();
             itemRemoved.BindValueChanged(beatmapRemoved);
             itemHidden = beatmaps.BeatmapHidden.GetBoundCopy();
@@ -582,7 +582,7 @@ namespace osu.Game.Screens.Select
                 RemoveBeatmapSet(item);
         }
 
-        private void beatmapAdded(ValueChangedEvent<WeakReference<BeatmapSetInfo>> weakItem)
+        private void beatmapUpdated(ValueChangedEvent<WeakReference<BeatmapSetInfo>> weakItem)
         {
             if (weakItem.NewValue.TryGetTarget(out var item))
                 UpdateBeatmapSet(item);
@@ -607,10 +607,7 @@ namespace osu.Game.Screens.Select
 
             // todo: remove the need for this.
             foreach (var b in beatmapSet.Beatmaps)
-            {
-                if (b.Metadata == null)
-                    b.Metadata = beatmapSet.Metadata;
-            }
+                b.Metadata ??= beatmapSet.Metadata;
 
             var set = new CarouselBeatmapSet(beatmapSet)
             {
