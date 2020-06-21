@@ -28,6 +28,11 @@ namespace osu.Game.Overlays.Settings.Sections.Graphics
                 },
                 new SettingsCheckbox
                 {
+                    LabelText = "Hide highest judge",
+                    Bindable = config.GetBindable<bool>(OsuSetting.HideHighestJudge)
+                },
+                new SettingsCheckbox
+                {
                     LabelText = "Hit Lighting",
                     Bindable = config.GetBindable<bool>(OsuSetting.HitLighting)
                 },

@@ -62,7 +62,14 @@ namespace osu.Game.Rulesets.Judgements
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            if (config.Get<bool>(OsuSetting.ShowJudgementDetail)) {
+            if (config.Get<bool>(OsuSetting.HideHighestJudge) && Result.Type == Result.Judgement.MaxResult) {
+                InternalChild = JudgementBody = new Container
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    RelativeSizeAxes = Axes.Both,
+                };
+            } else if (config.Get<bool>(OsuSetting.ShowJudgementDetail)) {
                 InternalChild = JudgementBody = new Container
                 {
                     Anchor = Anchor.Centre,
@@ -146,17 +153,9 @@ namespace osu.Game.Rulesets.Judgements
 
         private string detailText(JudgementResult result)
         {
-            if (result.TimeOffset == 0)
+            if (result.TimeOffset == 0 || result.Type == result.Judgement.MaxResult || result.Type == HitResult.Miss)
                 return "";
-            switch (result.Type)
-            {
-                case HitResult.Perfect:
-                case HitResult.Great:
-                case HitResult.Miss:
-                    return "";
-                default:
-                    return result.GetDetail().ToString().ToUpperInvariant();
-            }
+            return result.GetDetail().ToString().ToUpperInvariant();
         }
     }
 }

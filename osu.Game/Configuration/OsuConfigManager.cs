@@ -84,6 +84,7 @@ namespace osu.Game.Configuration
             Set(OsuSetting.LightenDuringBreaks, true);
 
             Set(OsuSetting.ShowJudgementDetail, true);
+            Set(OsuSetting.HideHighestJudge, true);
 
             Set(OsuSetting.HitLighting, true);
 
@@ -229,6 +230,7 @@ namespace osu.Game.Configuration
         IntroSequence,
         UIHoldActivationDelay,
         ShowJudgementDetail,
+        HideHighestJudge,
         HitLighting,
         MenuBackgroundSource
     }
