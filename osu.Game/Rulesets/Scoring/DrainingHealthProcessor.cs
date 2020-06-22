@@ -44,11 +44,12 @@ namespace osu.Game.Rulesets.Scoring
         private double gameplayEndTime;
 
         private readonly double drainStartTime;
-        public double drainLenience { get; set; }
+        private readonly double drainLenience;
 
         private readonly List<(double time, double health)> healthIncreases = new List<(double, double)>();
         private double targetMinimumHealth;
         private double drainRate = 1;
+        public bool lockedRate = false;
 
         private PeriodTracker noDrainPeriodTracker;
 
@@ -77,7 +78,8 @@ namespace osu.Game.Rulesets.Scoring
             double lastGameplayTime = Math.Clamp(Time.Current - Time.Elapsed, drainStartTime, gameplayEndTime);
             double currentGameplayTime = Math.Clamp(Time.Current, drainStartTime, gameplayEndTime);
 
-            Health.Value -= drainRate * (currentGameplayTime - lastGameplayTime);
+            if (!lockedRate)
+                Health.Value -= drainRate * (currentGameplayTime - lastGameplayTime);
         }
 
         public override void ApplyBeatmap(IBeatmap beatmap)

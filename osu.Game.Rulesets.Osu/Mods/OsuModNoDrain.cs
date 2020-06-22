@@ -21,10 +21,10 @@ namespace osu.Game.Rulesets.Osu.Mods
 
         public override double ScoreMultiplier => 1;
 
-        public void ApplyToHealthProcessor(HealthProcessor healthProcessor)
+        public void ApplyToHealthProcessor(HealthProcessor processor)
         {
-            DrainingHealthProcessor p = (DrainingHealthProcessor)healthProcessor;
-            p.drainLenience = 0;
+            DrainingHealthProcessor p = (DrainingHealthProcessor)processor;
+            p.lockedRate = true;
         }
 
         public ScoreRank AdjustRank(ScoreRank rank, double accuracy) => rank;
