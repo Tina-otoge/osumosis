@@ -14,7 +14,7 @@ namespace osu.Game.Rulesets.Osu.Mods
         public override string Description => "Removes the passive HP drain.";
         public override string Acronym => "ND";
 
-        public override IconUsage? Icon => FontAwesome.Solid.HandPeace;
+        public override IconUsage? Icon => FontAwesome.Solid.BandAid;
         public override ModType Type => ModType.DifficultyReduction;
 
         public override bool Ranked => true;
