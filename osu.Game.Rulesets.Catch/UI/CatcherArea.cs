@@ -22,6 +22,8 @@ namespace osu.Game.Rulesets.Catch.UI
 
         public Func<CatchHitObject, DrawableHitObject<CatchHitObject>> CreateDrawableRepresentation;
 
+        public readonly Catcher MovableCatcher;
+
         public Container ExplodingFruitTarget
         {
             set => MovableCatcher.ExplodingFruitTarget = value;
@@ -31,14 +33,8 @@ namespace osu.Game.Rulesets.Catch.UI
 
         public CatcherArea(BeatmapDifficulty difficulty = null)
         {
-            RelativeSizeAxes = Axes.X;
-            Height = CATCHER_SIZE;
-            Child = MovableCatcher = new Catcher(this, difficulty);
-        }
-
-        public static float GetCatcherSize(BeatmapDifficulty difficulty)
-        {
-            return CATCHER_SIZE / CatchPlayfield.BASE_WIDTH * (1.0f - 0.7f * (difficulty.CircleSize - 5) / 5);
+            Size = new Vector2(CatchPlayfield.WIDTH, CATCHER_SIZE);
+            Child = MovableCatcher = new Catcher(this, difficulty) { X = CatchPlayfield.CENTER_X };
         }
 
         public void OnResult(DrawableCatchHitObject fruit, JudgementResult result)
@@ -59,7 +55,7 @@ namespace osu.Game.Rulesets.Catch.UI
                     lastPlateableFruit.OnLoadComplete += _ => action();
             }
 
-            if (result.IsHit && fruit.CanBePlated)
+            if (result.IsHit && fruit.HitObject.CanBePlated)
             {
                 // create a new (cloned) fruit to stay on the plate. the original is faded out immediately.
                 var caughtFruit = (DrawableCatchHitObject)CreateDrawableRepresentation?.Invoke(fruit.HitObject);
@@ -110,7 +106,5 @@ namespace osu.Game.Rulesets.Catch.UI
             if (state?.CatcherX != null)
                 MovableCatcher.X = state.CatcherX.Value;
         }
-
-        protected internal readonly Catcher MovableCatcher;
     }
 }

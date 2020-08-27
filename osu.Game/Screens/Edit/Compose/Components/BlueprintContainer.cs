@@ -13,6 +13,7 @@ using osu.Framework.Graphics.Primitives;
 using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
@@ -63,6 +64,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 DragBox = CreateDragBox(select),
                 selectionHandler,
                 SelectionBlueprints = CreateSelectionBlueprintContainer(),
+                selectionHandler.CreateProxy(),
                 DragBox.CreateProxy().With(p => p.Depth = float.MinValue)
             });
 
@@ -82,6 +84,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                     case NotifyCollectionChangedAction.Remove:
                         foreach (var o in args.OldItems)
                             SelectionBlueprints.FirstOrDefault(b => b.HitObject == o)?.Deselect();
+
                         break;
                 }
             };
@@ -119,14 +122,19 @@ namespace osu.Game.Screens.Edit.Compose.Components
             return e.Button == MouseButton.Left;
         }
 
+        private SelectionBlueprint clickedBlueprint;
+
         protected override bool OnClick(ClickEvent e)
         {
             if (e.Button == MouseButton.Right)
                 return false;
 
+            // store for double-click handling
+            clickedBlueprint = selectionHandler.SelectedBlueprints.FirstOrDefault(b => b.IsHovered);
+
             // Deselection should only occur if no selected blueprints are hovered
             // A special case for when a blueprint was selected via this click is added since OnClick() may occur outside the hitobject and should not trigger deselection
-            if (endClickSelection() || selectionHandler.SelectedBlueprints.Any(b => b.IsHovered))
+            if (endClickSelection() || clickedBlueprint != null)
                 return true;
 
             deselectAll();
@@ -138,9 +146,8 @@ namespace osu.Game.Screens.Edit.Compose.Components
             if (e.Button == MouseButton.Right)
                 return false;
 
-            SelectionBlueprint clickedBlueprint = selectionHandler.SelectedBlueprints.FirstOrDefault(b => b.IsHovered);
-
-            if (clickedBlueprint == null)
+            // ensure the blueprint which was hovered for the first click is still the hovered blueprint.
+            if (clickedBlueprint == null || selectionHandler.SelectedBlueprints.FirstOrDefault(b => b.IsHovered) != clickedBlueprint)
                 return false;
 
             editorClock?.SeekTo(clickedBlueprint.HitObject.StartTime);
@@ -250,6 +257,9 @@ namespace osu.Game.Screens.Edit.Compose.Components
             blueprint.Deselected -= onBlueprintDeselected;
 
             SelectionBlueprints.Remove(blueprint);
+
+            if (movementBlueprint == blueprint)
+                finishSelectionMovement();
         }
 
         protected virtual void AddBlueprintFor(HitObject hitObject)
@@ -320,10 +330,22 @@ namespace osu.Game.Screens.Edit.Compose.Components
         {
             foreach (var blueprint in SelectionBlueprints)
             {
-                if (blueprint.IsAlive && blueprint.IsPresent && rect.Contains(blueprint.ScreenSpaceSelectionPoint))
-                    blueprint.Select();
-                else
-                    blueprint.Deselect();
+                // only run when utmost necessary to avoid unnecessary rect computations.
+                bool isValidForSelection() => blueprint.IsAlive && blueprint.IsPresent && rect.Contains(blueprint.ScreenSpaceSelectionPoint);
+
+                switch (blueprint.State)
+                {
+                    case SelectionState.NotSelected:
+                        if (isValidForSelection())
+                            blueprint.Select();
+                        break;
+
+                    case SelectionState.Selected:
+                        // if the editor is playing, we generally don't want to deselect objects even if outside the selection area.
+                        if (!editorClock.IsRunning && !isValidForSelection())
+                            blueprint.Deselect();
+                        break;
+                }
             }
         }
 

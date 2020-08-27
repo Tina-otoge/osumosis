@@ -232,7 +232,6 @@ namespace osu.Game.Screens.Play
 
         protected virtual RollingCounter<double> CreateAccuracyCounter() => new PercentageCounter
         {
-            TextSize = 20,
             BypassAutoSizeAxes = Axes.X,
             Anchor = Anchor.TopLeft,
             Origin = Anchor.TopRight,
@@ -241,14 +240,12 @@ namespace osu.Game.Screens.Play
 
         protected virtual ScoreCounter CreateScoreCounter() => new ScoreCounter(6)
         {
-            TextSize = 40,
             Anchor = Anchor.TopCentre,
             Origin = Anchor.TopCentre,
         };
 
         protected virtual RollingCounter<int> CreateComboCounter() => new SimpleComboCounter
         {
-            TextSize = 20,
             BypassAutoSizeAxes = Axes.X,
             Anchor = Anchor.TopRight,
             Origin = Anchor.TopLeft,
@@ -262,7 +259,10 @@ namespace osu.Game.Screens.Play
             Margin = new MarginPadding { Top = 20 }
         };
 
-        protected virtual FailingLayer CreateFailingLayer() => new FailingLayer();
+        protected virtual FailingLayer CreateFailingLayer() => new FailingLayer
+        {
+            ShowHealth = { BindTarget = ShowHealthbar }
+        };
 
         protected virtual KeyCounterDisplay CreateKeyCounter() => new KeyCounterDisplay
         {
