@@ -238,9 +238,12 @@ namespace osu.Game.Rulesets.Mania.Objects.Drawables
         protected override void CheckForResult(bool userTriggered, double timeOffset)
         {
             if (Tail.AllJudged)
-                ApplyResult(r => r.Type = HitResult.Perfect);
+            {
+                ApplyResult(r => r.Type = r.Judgement.MaxResult);
+                endHold();
+            }
 
-            if (Tail.Result.Type == HitResult.Miss)
+            if (Tail.Judged && !Tail.IsHit)
                 HasBroken = true;
         }
 
@@ -250,6 +253,9 @@ namespace osu.Game.Rulesets.Mania.Objects.Drawables
                 return false;
 
             if (action != Action.Value)
+                return false;
+
+            if (CheckHittable?.Invoke(this, Time.Current) == false)
                 return false;
 
             // The tail has a lenience applied to it which is factored into the miss window (i.e. the miss judgement will be delayed).
