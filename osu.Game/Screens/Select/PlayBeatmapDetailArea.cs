@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.ComponentModel;
 using System.Linq;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
@@ -78,6 +79,7 @@ namespace osu.Game.Screens.Select
         protected override BeatmapDetailAreaTabItem[] CreateTabItems() => base.CreateTabItems().Concat(new BeatmapDetailAreaTabItem[]
         {
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Local),
+            new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Osmosis),
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Country),
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Global),
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Friend),
@@ -92,6 +94,9 @@ namespace osu.Game.Screens.Select
 
                 case TabType.Local:
                     return new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Local);
+
+                case TabType.Osmosis:
+                    return new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Osmosis);
 
                 case TabType.Country:
                     return new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Country);
@@ -120,6 +125,9 @@ namespace osu.Game.Screens.Select
                         case BeatmapLeaderboardScope.Local:
                             return TabType.Local;
 
+                        case BeatmapLeaderboardScope.Osmosis:
+                            return TabType.Osmosis;
+
                         case BeatmapLeaderboardScope.Country:
                             return TabType.Country;
 
@@ -144,7 +152,10 @@ namespace osu.Game.Screens.Select
             Local,
             Country,
             Global,
-            Friends
+            Friends,
+
+            [Description("osmosis!")]
+            Osmosis,
         }
     }
 }

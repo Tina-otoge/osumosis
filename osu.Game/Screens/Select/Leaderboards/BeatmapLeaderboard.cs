@@ -129,6 +129,12 @@ namespace osu.Game.Screens.Select.Leaderboards
                 return null;
             }
 
+            if (Scope == BeatmapLeaderboardScope.Osmosis)
+            {
+                PlaceholderState = PlaceholderState.Unavailable;
+                return null;
+            }
+
             if (api?.IsLoggedIn != true)
             {
                 PlaceholderState = PlaceholderState.NotLoggedIn;
@@ -177,3 +183,4 @@ namespace osu.Game.Screens.Select.Leaderboards
         };
     }
 }
+

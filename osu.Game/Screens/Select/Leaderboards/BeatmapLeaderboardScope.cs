@@ -18,5 +18,8 @@ namespace osu.Game.Screens.Select.Leaderboards
 
         [Description("Friend Ranking")]
         Friend,
+
+        [Description("osmosis!")]
+        Osmosis,
     }
 }

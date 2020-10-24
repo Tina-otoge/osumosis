@@ -281,11 +281,11 @@ namespace osu.Game.Online.Leaderboards
             getScoresRequest = null;
 
             pendingUpdateScores?.Cancel();
+
             pendingUpdateScores = Schedule(() =>
             {
                 PlaceholderState = PlaceholderState.Retrieving;
                 loading.Show();
-
                 getScoresRequest = FetchScores(scores => Schedule(() =>
                 {
                     Scores = scores;
