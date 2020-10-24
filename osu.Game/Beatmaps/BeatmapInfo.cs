@@ -145,7 +145,7 @@ namespace osu.Game.Beatmaps
 
         public override string ToString()
         {
-            string version = string.IsNullOrEmpty(Version) ? string.Empty : $"[{Version}]";
+            string version = string.IsNullOrEmpty(Version) ? string.Empty : $"[{Version} ⭐{Math.Round(StarDifficulty, 2)}]";
 
             return $"{Metadata} {version}".Trim();
         }

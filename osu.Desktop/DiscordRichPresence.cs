@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.IO;
 using System.Text;
 using DiscordRPC;
 using DiscordRPC.Message;
@@ -75,6 +76,8 @@ namespace osu.Desktop
 
         private void updateStatus()
         {
+            writeToTextFiles();
+
             if (!client.IsInitialized)
                 return;
 
@@ -144,6 +147,18 @@ namespace osu.Desktop
         {
             client.Dispose();
             base.Dispose(isDisposing);
+        }
+
+        private void writeToTextFiles()
+        {
+            const string path = "now_playing";
+
+            string details = getDetails(activity.Value);
+            string status = !string.IsNullOrEmpty(details) ? details : (activity.Value != null ? activity.Value.Status : "Idle");
+
+            Directory.CreateDirectory(path);
+            using (StreamWriter outfile = new StreamWriter(Path.Combine(path, "status.txt")))
+                outfile.Write(status);
         }
     }
 }
