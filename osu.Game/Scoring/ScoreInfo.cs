@@ -218,22 +218,19 @@ namespace osu.Game.Scoring
             set => isLegacyScore = value;
         }
 
-        public IEnumerable<(HitResult result, int count, int? maxCount)> GetStatisticsForDisplay()
+        public IEnumerable<HitResultDisplayStatistic> GetStatisticsForDisplay()
         {
-            foreach (var key in OrderAttributeUtils.GetValuesInOrder<HitResult>())
+            foreach (var r in Ruleset.CreateInstance().GetHitResults())
             {
-                if (key.IsBonus())
-                    continue;
+                int value = Statistics.GetOrDefault(r.result);
 
-                int value = Statistics.GetOrDefault(key);
-
-                switch (key)
+                switch (r.result)
                 {
                     case HitResult.SmallTickHit:
                     {
                         int total = value + Statistics.GetOrDefault(HitResult.SmallTickMiss);
                         if (total > 0)
-                            yield return (key, value, total);
+                            yield return new HitResultDisplayStatistic(r.result, value, total, r.displayName);
 
                         break;
                     }
@@ -242,7 +239,7 @@ namespace osu.Game.Scoring
                     {
                         int total = value + Statistics.GetOrDefault(HitResult.LargeTickMiss);
                         if (total > 0)
-                            yield return (key, value, total);
+                            yield return new HitResultDisplayStatistic(r.result, value, total, r.displayName);
 
                         break;
                     }
@@ -252,8 +249,7 @@ namespace osu.Game.Scoring
                         break;
 
                     default:
-                        if (value > 0 || key == HitResult.Miss)
-                            yield return (key, value, null);
+                        yield return new HitResultDisplayStatistic(r.result, value, null, r.displayName);
 
                         break;
                 }
