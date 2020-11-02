@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -19,6 +20,7 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.Replays.Types;
+using osu.Game.Screens.Play;
 
 namespace osu.Game.Online.Spectator
 {
@@ -44,14 +46,14 @@ namespace osu.Game.Online.Spectator
         [Resolved]
         private IAPIProvider api { get; set; }
 
-        [Resolved]
-        private IBindable<WorkingBeatmap> beatmap { get; set; }
+        [CanBeNull]
+        private IBeatmap currentBeatmap;
 
         [Resolved]
-        private IBindable<RulesetInfo> ruleset { get; set; }
+        private IBindable<RulesetInfo> currentRuleset { get; set; }
 
         [Resolved]
-        private IBindable<IReadOnlyList<Mod>> mods { get; set; }
+        private IBindable<IReadOnlyList<Mod>> currentMods { get; set; }
 
         private readonly SpectatorState currentState = new SpectatorState();
 
@@ -61,6 +63,16 @@ namespace osu.Game.Online.Spectator
         /// Called whenever new frames arrive from the server.
         /// </summary>
         public event Action<int, FrameDataBundle> OnNewFrames;
+
+        /// <summary>
+        /// Called whenever a user starts a play session.
+        /// </summary>
+        public event Action<int, SpectatorState> OnUserBeganPlaying;
+
+        /// <summary>
+        /// Called whenever a user finishes a play session.
+        /// </summary>
+        public event Action<int, SpectatorState> OnUserFinishedPlaying;
 
         [BackgroundDependencyLoader]
         private void load()
@@ -152,22 +164,28 @@ namespace osu.Game.Online.Spectator
             if (!playingUsers.Contains(userId))
                 playingUsers.Add(userId);
 
+            OnUserBeganPlaying?.Invoke(userId, state);
+
             return Task.CompletedTask;
         }
 
         Task ISpectatorClient.UserFinishedPlaying(int userId, SpectatorState state)
         {
             playingUsers.Remove(userId);
+
+            OnUserFinishedPlaying?.Invoke(userId, state);
+
             return Task.CompletedTask;
         }
 
         Task ISpectatorClient.UserSentFrames(int userId, FrameDataBundle data)
         {
             OnNewFrames?.Invoke(userId, data);
+
             return Task.CompletedTask;
         }
 
-        public void BeginPlaying()
+        public void BeginPlaying(GameplayBeatmap beatmap)
         {
             if (isPlaying)
                 throw new InvalidOperationException($"Cannot invoke {nameof(BeginPlaying)} when already playing");
@@ -175,10 +193,11 @@ namespace osu.Game.Online.Spectator
             isPlaying = true;
 
             // transfer state at point of beginning play
-            currentState.BeatmapID = beatmap.Value.BeatmapInfo.OnlineBeatmapID;
-            currentState.RulesetID = ruleset.Value.ID;
-            currentState.Mods = mods.Value.Select(m => new APIMod(m));
+            currentState.BeatmapID = beatmap.BeatmapInfo.OnlineBeatmapID;
+            currentState.RulesetID = currentRuleset.Value.ID;
+            currentState.Mods = currentMods.Value.Select(m => new APIMod(m));
 
+            currentBeatmap = beatmap.PlayableBeatmap;
             beginPlaying();
         }
 
@@ -201,13 +220,14 @@ namespace osu.Game.Online.Spectator
         public void EndPlaying()
         {
             isPlaying = false;
+            currentBeatmap = null;
 
             if (!isConnected) return;
 
             connection.SendAsync(nameof(ISpectatorServer.EndPlaySession), currentState);
         }
 
-        public void WatchUser(int userId)
+        public virtual void WatchUser(int userId)
         {
             if (watchingUsers.Contains(userId))
                 return;
@@ -247,7 +267,7 @@ namespace osu.Game.Online.Spectator
         public void HandleFrame(ReplayFrame frame)
         {
             if (frame is IConvertibleReplayFrame convertible)
-                pendingFrames.Enqueue(convertible.ToLegacy(beatmap.Value.Beatmap));
+                pendingFrames.Enqueue(convertible.ToLegacy(currentBeatmap));
 
             if (pendingFrames.Count > max_pending_frames)
                 purgePendingFrames();

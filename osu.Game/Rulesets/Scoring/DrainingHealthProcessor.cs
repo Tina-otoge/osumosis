@@ -49,7 +49,7 @@ namespace osu.Game.Rulesets.Scoring
         private readonly List<(double time, double health)> healthIncreases = new List<(double, double)>();
         private double targetMinimumHealth;
         private double drainRate = 1;
-        public bool lockedRate = false;
+        public bool lockedRate;
 
         private PeriodTracker noDrainPeriodTracker;
 
