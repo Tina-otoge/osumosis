@@ -27,6 +27,7 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.Replays.Types;
 using osu.Game.Rulesets.UI;
+using osu.Game.Scoring;
 using osu.Game.Screens.Play;
 using osu.Game.Tests.Visual.UserInterface;
 using osuTK;
@@ -43,7 +44,7 @@ namespace osu.Game.Tests.Visual.Gameplay
 
         private Replay replay;
 
-        private IBindableList<int> users;
+        private readonly IBindableList<int> users = new BindableList<int>();
 
         private TestReplayRecorder recorder;
 
@@ -67,7 +68,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         {
             replay = new Replay();
 
-            users = streamingClient.PlayingUsers.GetBoundCopy();
+            users.BindTo(streamingClient.PlayingUsers);
             users.BindCollectionChanged((obj, args) =>
             {
                 switch (args.Action)
@@ -348,7 +349,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         internal class TestReplayRecorder : ReplayRecorder<TestAction>
         {
             public TestReplayRecorder()
-                : base(new Replay())
+                : base(new Score())
             {
             }
 

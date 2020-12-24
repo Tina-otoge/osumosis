@@ -61,7 +61,7 @@ namespace osu.Game.Online.API.Requests.Responses
         private int[] ratings { get; set; }
 
         [JsonProperty(@"user_id")]
-        private long creatorId
+        private int creatorId
         {
             set => Author.Id = value;
         }
@@ -80,7 +80,7 @@ namespace osu.Game.Online.API.Requests.Responses
 
         public BeatmapSetInfo ToBeatmapSet(RulesetStore rulesets)
         {
-            return new BeatmapSetInfo
+            var beatmapSet = new BeatmapSetInfo
             {
                 OnlineBeatmapSetID = OnlineBeatmapSetID,
                 Metadata = this,
@@ -104,8 +104,17 @@ namespace osu.Game.Online.API.Requests.Responses
                     Genre = genre,
                     Language = language
                 },
-                Beatmaps = beatmaps?.Select(b => b.ToBeatmap(rulesets)).ToList(),
             };
+
+            beatmapSet.Beatmaps = beatmaps?.Select(b =>
+            {
+                var beatmap = b.ToBeatmap(rulesets);
+                beatmap.BeatmapSet = beatmapSet;
+                beatmap.Metadata = beatmapSet.Metadata;
+                return beatmap;
+            }).ToList();
+
+            return beatmapSet;
         }
     }
 }

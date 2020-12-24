@@ -19,6 +19,7 @@ using osu.Game.Replays;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.UI;
+using osu.Game.Scoring;
 using osu.Game.Screens.Play;
 using osu.Game.Tests.Visual.UserInterface;
 using osuTK;
@@ -53,7 +54,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                     {
                         recordingManager = new TestRulesetInputManager(new TestSceneModSettings.TestRulesetInfo(), 0, SimultaneousBindingMode.Unique)
                         {
-                            Recorder = recorder = new TestReplayRecorder(replay)
+                            Recorder = recorder = new TestReplayRecorder(new Score { Replay = replay })
                             {
                                 ScreenSpaceToGamefield = pos => recordingManager.ToLocalSpace(pos),
                             },
@@ -158,8 +159,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddStep("much move with press", () => moveFunction = Scheduler.AddDelayed(() =>
             {
                 InputManager.MoveMouseTo(InputManager.CurrentState.Mouse.Position + new Vector2(-1, 0));
-                InputManager.PressButton(MouseButton.Left);
-                InputManager.ReleaseButton(MouseButton.Left);
+                InputManager.Click(MouseButton.Left);
             }, 10, true));
             AddWaitStep("move", 10);
             AddStep("stop move", () => moveFunction.Cancel());
@@ -272,7 +272,7 @@ namespace osu.Game.Tests.Visual.Gameplay
 
         internal class TestReplayRecorder : ReplayRecorder<TestAction>
         {
-            public TestReplayRecorder(Replay target)
+            public TestReplayRecorder(Score target)
                 : base(target)
             {
             }

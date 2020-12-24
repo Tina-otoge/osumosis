@@ -30,6 +30,8 @@ using osu.Game.Database;
 using osu.Game.Input;
 using osu.Game.Input.Bindings;
 using osu.Game.IO;
+using osu.Game.Online;
+using osu.Game.Online.RealtimeMultiplayer;
 using osu.Game.Online.Spectator;
 using osu.Game.Overlays;
 using osu.Game.Resources;
@@ -53,13 +55,17 @@ namespace osu.Game
 
         public const int SAMPLE_CONCURRENCY = 6;
 
+        public bool UseDevelopmentServer { get; }
+
         protected OsuConfigManager LocalConfig;
 
         protected BeatmapManager BeatmapManager;
 
         protected ScoreManager ScoreManager;
 
-        protected BeatmapDifficultyManager DifficultyManager;
+        protected BeatmapDifficultyCache DifficultyCache;
+
+        protected UserLookupCache UserCache;
 
         protected SkinManager SkinManager;
 
@@ -76,6 +82,7 @@ namespace osu.Game
         protected IAPIProvider API;
 
         private SpectatorStreamingClient spectatorStreaming;
+        private StatefulMultiplayerClient multiplayerClient;
 
         protected MenuCursorContainer MenuCursorContainer;
 
@@ -128,7 +135,9 @@ namespace osu.Game
 
         public OsuGameBase()
         {
+            UseDevelopmentServer = DebugUtils.IsDebugBuild;
             Name = @"osumosis";
+            Name = @"osu!lazer";
         }
 
         private DependencyContainer dependencies;
@@ -166,7 +175,7 @@ namespace osu.Game
             dependencies.Cache(largeStore);
 
             dependencies.CacheAs(this);
-            dependencies.Cache(LocalConfig);
+            dependencies.CacheAs(LocalConfig);
 
             AddFont(Resources, @"Fonts/osuFont");
 
@@ -192,9 +201,26 @@ namespace osu.Game
             dependencies.Cache(SkinManager = new SkinManager(Storage, contextFactory, Host, Audio, new NamespacedResourceStore<byte[]>(Resources, "Skins/Legacy")));
             dependencies.CacheAs<ISkinSource>(SkinManager);
 
-            dependencies.CacheAs(API ??= new APIAccess(LocalConfig));
+            // needs to be done here rather than inside SkinManager to ensure thread safety of CurrentSkinInfo.
+            SkinManager.ItemRemoved.BindValueChanged(weakRemovedInfo =>
+            {
+                if (weakRemovedInfo.NewValue.TryGetTarget(out var removedInfo))
+                {
+                    Schedule(() =>
+                    {
+                        // check the removed skin is not the current user choice. if it is, switch back to default.
+                        if (removedInfo.ID == SkinManager.CurrentSkinInfo.Value.ID)
+                            SkinManager.CurrentSkinInfo.Value = SkinInfo.Default;
+                    });
+                }
+            });
 
-            dependencies.CacheAs(spectatorStreaming = new SpectatorStreamingClient());
+            EndpointConfiguration endpoints = UseDevelopmentServer ? (EndpointConfiguration)new DevelopmentEndpointConfiguration() : new ProductionEndpointConfiguration();
+
+            dependencies.CacheAs(API ??= new APIAccess(LocalConfig, endpoints));
+
+            dependencies.CacheAs(spectatorStreaming = new SpectatorStreamingClient(endpoints));
+            dependencies.CacheAs(multiplayerClient = new RealtimeMultiplayerClient(endpoints));
 
             var defaultBeatmap = new DummyWorkingBeatmap(Audio, Textures);
 
@@ -202,7 +228,7 @@ namespace osu.Game
             dependencies.Cache(FileStore = new FileStore(contextFactory, Storage));
 
             // ordering is important here to ensure foreign keys rules are not broken in ModelStore.Cleanup()
-            dependencies.Cache(ScoreManager = new ScoreManager(RulesetStore, () => BeatmapManager, Storage, API, contextFactory, Host, () => DifficultyManager, LocalConfig));
+            dependencies.Cache(ScoreManager = new ScoreManager(RulesetStore, () => BeatmapManager, Storage, API, contextFactory, Host, () => DifficultyCache, LocalConfig));
             dependencies.Cache(BeatmapManager = new BeatmapManager(Storage, contextFactory, RulesetStore, API, Audio, Host, defaultBeatmap, true));
 
             // this should likely be moved to ArchiveModelManager when another case appers where it is necessary
@@ -226,10 +252,13 @@ namespace osu.Game
                     ScoreManager.Undelete(getBeatmapScores(item), true);
             });
 
-            dependencies.Cache(DifficultyManager = new BeatmapDifficultyManager());
-            AddInternal(DifficultyManager);
+            dependencies.Cache(DifficultyCache = new BeatmapDifficultyCache());
+            AddInternal(DifficultyCache);
 
-            var scorePerformanceManager = new ScorePerformanceManager();
+            dependencies.Cache(UserCache = new UserLookupCache());
+            AddInternal(UserCache);
+
+            var scorePerformanceManager = new ScorePerformanceCache();
             dependencies.Cache(scorePerformanceManager);
             AddInternal(scorePerformanceManager);
 
@@ -258,6 +287,7 @@ namespace osu.Game
             if (API is APIAccess apiAccess)
                 AddInternal(apiAccess);
             AddInternal(spectatorStreaming);
+            AddInternal(multiplayerClient);
 
             AddInternal(RulesetConfigCache);
 
@@ -346,7 +376,9 @@ namespace osu.Game
             // may be non-null for certain tests
             Storage ??= host.Storage;
 
-            LocalConfig ??= new OsuConfigManager(Storage);
+            LocalConfig ??= UseDevelopmentServer
+                ? new DevelopmentOsuConfigManager(Storage)
+                : new OsuConfigManager(Storage);
         }
 
         protected override Storage CreateStorage(GameHost host, Storage defaultStorage) => new OsuStorage(host, defaultStorage);
@@ -373,6 +405,17 @@ namespace osu.Game
             {
                 if (importer.HandledExtensions.Contains(extension))
                     await importer.Import(paths);
+            }
+        }
+
+        public virtual async Task Import(Stream stream, string filename)
+        {
+            var extension = Path.GetExtension(filename)?.ToLowerInvariant();
+
+            foreach (var importer in fileImporters)
+            {
+                if (importer.HandledExtensions.Contains(extension))
+                    await importer.Import(stream, Path.GetFileNameWithoutExtension(filename));
             }
         }
 

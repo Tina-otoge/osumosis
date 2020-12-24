@@ -14,7 +14,7 @@ using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
-using osu.Framework.Input.States;
+using osu.Framework.Input.Events;
 using osu.Game.Audio;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
@@ -99,10 +99,10 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 OperationStarted = OnOperationBegan,
                 OperationEnded = OnOperationEnded,
 
-                OnRotation = angle => HandleRotation(angle),
-                OnScale = (amount, anchor) => HandleScale(amount, anchor),
-                OnFlip = direction => HandleFlip(direction),
-                OnReverse = () => HandleReverse(),
+                OnRotation = HandleRotation,
+                OnScale = HandleScale,
+                OnFlip = HandleFlip,
+                OnReverse = HandleReverse,
             };
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         /// </summary>
         protected virtual void OnOperationBegan()
         {
-            ChangeHandler.BeginChange();
+            ChangeHandler?.BeginChange();
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         /// </summary>
         protected virtual void OnOperationEnded()
         {
-            ChangeHandler.EndChange();
+            ChangeHandler?.EndChange();
         }
 
         #region User Input Handling
@@ -218,19 +218,29 @@ namespace osu.Game.Screens.Edit.Compose.Components
         /// Handle a blueprint requesting selection.
         /// </summary>
         /// <param name="blueprint">The blueprint.</param>
-        /// <param name="state">The input state at the point of selection.</param>
-        internal void HandleSelectionRequested(SelectionBlueprint blueprint, InputState state)
+        /// <param name="e">The mouse event responsible for selection.</param>
+        /// <returns>Whether a selection was performed.</returns>
+        internal bool HandleSelectionRequested(SelectionBlueprint blueprint, MouseButtonEvent e)
         {
-            if (state.Keyboard.ShiftPressed && state.Mouse.IsPressed(MouseButton.Right))
+            if (e.ShiftPressed && e.Button == MouseButton.Right)
+            {
                 handleQuickDeletion(blueprint);
-            else if (state.Keyboard.ControlPressed && state.Mouse.IsPressed(MouseButton.Left))
+                return false;
+            }
+
+            if (e.ControlPressed && e.Button == MouseButton.Left)
                 blueprint.ToggleSelection();
             else
                 ensureSelected(blueprint);
+
+            return true;
         }
 
         private void handleQuickDeletion(SelectionBlueprint blueprint)
         {
+            if (blueprint.HandleQuickDeletion())
+                return;
+
             if (!blueprint.IsSelected)
                 EditorBeatmap.Remove(blueprint.HitObject);
             else
@@ -318,7 +328,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 if (h.Samples.Any(s => s.Name == sampleName))
                     continue;
 
-                h.Samples.Add(new HitSampleInfo { Name = sampleName });
+                h.Samples.Add(new HitSampleInfo(sampleName));
             }
 
             EditorBeatmap.EndChange();

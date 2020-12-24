@@ -14,18 +14,20 @@ using osu.Game.Online.Multiplayer;
 using osu.Game.Overlays;
 using osu.Game.Screens.Multi.Lounge.Components;
 using osu.Game.Screens.Multi.Match;
+using osu.Game.Users;
 
 namespace osu.Game.Screens.Multi.Lounge
 {
     [Cached]
-    public class LoungeSubScreen : MultiplayerSubScreen
+    public abstract class LoungeSubScreen : MultiplayerSubScreen
     {
         public override string Title => "Lounge";
 
-        protected FilterControl Filter;
+        protected override UserActivity InitialActivity => new UserActivity.SearchingForLobby();
 
-        private readonly Bindable<bool> initialRoomsReceived = new Bindable<bool>();
+        private readonly IBindable<bool> initialRoomsReceived = new Bindable<bool>();
 
+        private FilterControl filter;
         private Container content;
         private LoadingLayer loadingLayer;
 
@@ -45,7 +47,6 @@ namespace osu.Game.Screens.Multi.Lounge
 
             InternalChildren = new Drawable[]
             {
-                Filter = new FilterControl { Depth = -1 },
                 content = new Container
                 {
                     RelativeSizeAxes = Axes.Both,
@@ -76,6 +77,11 @@ namespace osu.Game.Screens.Multi.Lounge
                         },
                     },
                 },
+                filter = CreateFilterControl().With(d =>
+                {
+                    d.RelativeSizeAxes = Axes.X;
+                    d.Height = 80;
+                })
             };
 
             // scroll selected room into view on selection.
@@ -101,7 +107,7 @@ namespace osu.Game.Screens.Multi.Lounge
 
             content.Padding = new MarginPadding
             {
-                Top = Filter.DrawHeight,
+                Top = filter.DrawHeight,
                 Left = WaveOverlayContainer.WIDTH_PADDING - DrawableRoom.SELECTION_BORDER_WIDTH + HORIZONTAL_OVERFLOW_PADDING,
                 Right = WaveOverlayContainer.WIDTH_PADDING + HORIZONTAL_OVERFLOW_PADDING,
             };
@@ -109,7 +115,7 @@ namespace osu.Game.Screens.Multi.Lounge
 
         protected override void OnFocus(FocusEvent e)
         {
-            Filter.Search.TakeFocus();
+            filter.TakeFocus();
         }
 
         public override void OnEntering(IScreen last)
@@ -133,19 +139,19 @@ namespace osu.Game.Screens.Multi.Lounge
 
         private void onReturning()
         {
-            Filter.Search.HoldFocus = true;
+            filter.HoldFocus = true;
         }
 
         public override bool OnExiting(IScreen next)
         {
-            Filter.Search.HoldFocus = false;
+            filter.HoldFocus = false;
             return base.OnExiting(next);
         }
 
         public override void OnSuspending(IScreen next)
         {
             base.OnSuspending(next);
-            Filter.Search.HoldFocus = false;
+            filter.HoldFocus = false;
         }
 
         private void joinRequested(Room room)
@@ -178,7 +184,7 @@ namespace osu.Game.Screens.Multi.Lounge
         /// <summary>
         /// Push a room as a new subscreen.
         /// </summary>
-        public void Open(Room room)
+        public virtual void Open(Room room)
         {
             // Handles the case where a room is clicked 3 times in quick succession
             if (!this.IsCurrentScreen())
@@ -186,7 +192,11 @@ namespace osu.Game.Screens.Multi.Lounge
 
             selectedRoom.Value = room;
 
-            this.Push(new MatchSubScreen(room));
+            this.Push(CreateRoomSubScreen(room));
         }
+
+        protected abstract FilterControl CreateFilterControl();
+
+        protected abstract RoomSubScreen CreateRoomSubScreen(Room room);
     }
 }

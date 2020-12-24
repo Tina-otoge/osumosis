@@ -3,18 +3,22 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Screens;
 using osu.Framework.Testing;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Online;
 using osu.Game.Online.Spectator;
 using osu.Game.Replays.Legacy;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Replays;
 using osu.Game.Rulesets.UI;
+using osu.Game.Scoring;
 using osu.Game.Screens.Play;
 using osu.Game.Tests.Beatmaps.IO;
 using osu.Game.Users;
@@ -227,11 +231,23 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddUntilStep("wait for screen load", () => spectatorScreen.LoadState == LoadState.Loaded);
         }
 
-        internal class TestSpectatorStreamingClient : SpectatorStreamingClient
+        public class TestSpectatorStreamingClient : SpectatorStreamingClient
         {
-            public readonly User StreamingUser = new User { Id = 1234, Username = "Test user" };
+            public readonly User StreamingUser = new User { Id = 55, Username = "Test user" };
+
+            public new BindableList<int> PlayingUsers => (BindableList<int>)base.PlayingUsers;
 
             private int beatmapId;
+
+            public TestSpectatorStreamingClient()
+                : base(new DevelopmentEndpointConfiguration())
+            {
+            }
+
+            protected override Task Connect()
+            {
+                return Task.CompletedTask;
+            }
 
             public void StartPlay(int beatmapId)
             {
@@ -241,7 +257,7 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             public void EndPlay(int beatmapId)
             {
-                ((ISpectatorClient)this).UserFinishedPlaying((int)StreamingUser.Id, new SpectatorState
+                ((ISpectatorClient)this).UserFinishedPlaying(StreamingUser.Id, new SpectatorState
                 {
                     BeatmapID = beatmapId,
                     RulesetID = 0,
@@ -263,8 +279,8 @@ namespace osu.Game.Tests.Visual.Gameplay
                     frames.Add(new LegacyReplayFrame(i * 100, RNG.Next(0, 512), RNG.Next(0, 512), buttonState));
                 }
 
-                var bundle = new FrameDataBundle(frames);
-                ((ISpectatorClient)this).UserSentFrames((int)StreamingUser.Id, bundle);
+                var bundle = new FrameDataBundle(new ScoreInfo(), frames);
+                ((ISpectatorClient)this).UserSentFrames(StreamingUser.Id, bundle);
 
                 if (!sentState)
                     sendState(beatmapId);
@@ -284,7 +300,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             private void sendState(int beatmapId)
             {
                 sentState = true;
-                ((ISpectatorClient)this).UserBeganPlaying((int)StreamingUser.Id, new SpectatorState
+                ((ISpectatorClient)this).UserBeganPlaying(StreamingUser.Id, new SpectatorState
                 {
                     BeatmapID = beatmapId,
                     RulesetID = 0,

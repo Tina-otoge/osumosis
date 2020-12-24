@@ -27,7 +27,7 @@ namespace osu.Desktop
         [Resolved]
         private IBindable<RulesetInfo> ruleset { get; set; }
 
-        private Bindable<User> user;
+        private IBindable<User> user;
 
         private readonly IBindable<UserStatus> status = new Bindable<UserStatus>();
         private readonly IBindable<UserActivity> activity = new Bindable<UserActivity>();
@@ -138,6 +138,9 @@ namespace osu.Desktop
 
                 case UserActivity.Editing edit:
                     return edit.Beatmap.ToString();
+
+                case UserActivity.InLobby lobby:
+                    return lobby.Room.Name.Value;
             }
 
             return string.Empty;
