@@ -208,6 +208,7 @@ namespace osu.Game.Rulesets.Mania
                     {
                         new ManiaModEasy(),
                         new ManiaModNoFail(),
+                        new ManiaModNoDrain(),
                         new MultiMod(new ManiaModHalfTime(), new ManiaModDaycore()),
                     };
 
