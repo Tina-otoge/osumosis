@@ -229,6 +229,12 @@ namespace osu.Game.Rulesets.Scoring
                 case ScoringMode.Classic:
                     // should emulate osu-stable's scoring as closely as we can (https://osu.ppy.sh/help/wiki/Score/ScoreV1)
                     return getBonusScore(statistics) + (accuracyRatio * Math.Max(1, maxCombo) * 300) * (1 + Math.Max(0, (comboRatio * maxCombo) - 1) * scoreMultiplier / 25);
+
+                case ScoringMode.Accuracy:
+                    return max_score * accuracyRatio;
+
+                case ScoringMode.ExScore:
+                    return (maxCombo * 2) * accuracyRatio;
             }
         }
 
@@ -357,6 +363,8 @@ namespace osu.Game.Rulesets.Scoring
     public enum ScoringMode
     {
         Standardised,
-        Classic
+        Classic,
+        Accuracy,
+        ExScore,
     }
 }
