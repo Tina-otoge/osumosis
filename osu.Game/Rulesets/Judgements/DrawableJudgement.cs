@@ -175,7 +175,7 @@ namespace osu.Game.Rulesets.Judgements
                 RemoveInternal(JudgementBody);
 
             AddInternal(JudgementBody = new SkinnableDrawable(new GameplaySkinComponent<HitResult>(type), _ =>
-                CreateDefaultJudgement(type), confineMode: ConfineMode.NoScaling)
+                CreateDefaultJudgement(Result), confineMode: ConfineMode.NoScaling)
             {
                 Anchor = Anchor.Centre,
                 Origin = Anchor.Centre,
@@ -206,6 +206,6 @@ namespace osu.Game.Rulesets.Judgements
             }
         }
 
-        protected virtual Drawable CreateDefaultJudgement(HitResult result) => new DefaultJudgementPiece(result);
+        protected virtual Drawable CreateDefaultJudgement(JudgementResult result) => new DefaultJudgementPiece(result);
     }
 }

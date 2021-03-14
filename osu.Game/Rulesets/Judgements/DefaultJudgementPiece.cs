@@ -13,18 +13,21 @@ using osuTK;
 
 namespace osu.Game.Rulesets.Judgements
 {
-    public class DefaultJudgementPiece : CompositeDrawable, IAnimatableJudgement
+    public class DefaultJudgementPiece : FillFlowContainer, IAnimatableJudgement
     {
+        protected readonly JudgementResult Judge;
         protected readonly HitResult Result;
 
         protected SpriteText JudgementText { get; private set; }
+        protected SpriteText FastSlowText { get; private set; }
 
         [Resolved]
         private OsuColour colours { get; set; }
 
-        public DefaultJudgementPiece(HitResult result)
+        public DefaultJudgementPiece(JudgementResult result)
         {
-            Result = result;
+            Judge = result;
+            Result = result.Type;
             Origin = Anchor.Centre;
         }
 
@@ -32,9 +35,21 @@ namespace osu.Game.Rulesets.Judgements
         private void load()
         {
             AutoSizeAxes = Axes.Both;
+            Direction = FillDirection.Vertical;
+            Spacing = new Vector2(5, 0);
 
             InternalChildren = new Drawable[]
             {
+                FastSlowText = new OsuSpriteText
+                {
+                    Anchor = Anchor.Centre,
+                    Origin = Anchor.Centre,
+                    Text = Judge.FastSlow.ToString().ToUpperInvariant(),
+                    /* Text = Judge.FastSlow.GetDescription().ToUpperInvariant(), */
+                    Colour = colours.ForFastSlow(Judge.FastSlow),
+                    Font = OsuFont.Numeric.With(size: 18),
+                    Scale = new Vector2(0.85f, 1),
+                },
                 JudgementText = new OsuSpriteText
                 {
                     Anchor = Anchor.Centre,

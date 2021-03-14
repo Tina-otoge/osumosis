@@ -63,11 +63,11 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
             base.ApplyHitAnimations();
         }
 
-        protected override Drawable CreateDefaultJudgement(HitResult result) => new OsuJudgementPiece(result);
+        protected override Drawable CreateDefaultJudgement(JudgementResult result) => new OsuJudgementPiece(result);
 
         private class OsuJudgementPiece : DefaultJudgementPiece
         {
-            public OsuJudgementPiece(HitResult result)
+            public OsuJudgementPiece(JudgementResult result)
                 : base(result)
             {
             }

@@ -4,6 +4,7 @@
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Rulesets.Judgements;
 using osu.Game.Scoring;
 using osuTK.Graphics;
 
@@ -92,6 +93,11 @@ namespace osu.Game.Graphics
                 default:
                     return Color4.White;
             }
+        }
+
+        public Color4 ForFastSlow(FastSlow fastslow)
+        {
+            return fastslow == FastSlow.Fast ? BlueLight : RedLight;
         }
 
         // See https://github.com/ppy/osu-web/blob/master/resources/assets/less/colors.less

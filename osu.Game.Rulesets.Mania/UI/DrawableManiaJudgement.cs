@@ -19,11 +19,11 @@ namespace osu.Game.Rulesets.Mania.UI
         {
         }
 
-        protected override Drawable CreateDefaultJudgement(HitResult result) => new DefaultManiaJudgementPiece(result);
+        protected override Drawable CreateDefaultJudgement(JudgementResult result) => new DefaultManiaJudgementPiece(result);
 
         private class DefaultManiaJudgementPiece : DefaultJudgementPiece
         {
-            public DefaultManiaJudgementPiece(HitResult result)
+            public DefaultManiaJudgementPiece(JudgementResult result)
                 : base(result)
             {
             }

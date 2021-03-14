@@ -2,12 +2,22 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using JetBrains.Annotations;
+using System.ComponentModel;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Scoring;
 
 namespace osu.Game.Rulesets.Judgements
 {
+    public enum FastSlow
+    {
+        [Description("")]
+        None,
+
+        Fast,
+        Slow,
+    }
+
     /// <summary>
     /// The scoring result of a <see cref="DrawableHitObject"/>.
     /// </summary>
@@ -35,6 +45,8 @@ namespace osu.Game.Rulesets.Judgements
         /// Populated when this <see cref="JudgementResult"/> is applied via <see cref="DrawableHitObject.ApplyResult"/>.
         /// </summary>
         public double TimeOffset { get; internal set; }
+
+        public FastSlow FastSlow = FastSlow.None;
 
         /// <summary>
         /// The absolute time at which this <see cref="JudgementResult"/> occurred.

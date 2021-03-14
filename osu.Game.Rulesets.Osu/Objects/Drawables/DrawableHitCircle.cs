@@ -9,6 +9,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
+using osu.Framework.Logging;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Osu.Judgements;
@@ -143,6 +144,8 @@ namespace osu.Game.Rulesets.Osu.Objects.Drawables
                 }
 
                 circleResult.Type = result;
+                circleResult.FastSlow = timeOffset < 0 ? FastSlow.Fast : FastSlow.Slow;
+                Logger.Log($"Set circle to {circleResult.FastSlow}");
             });
         }
 

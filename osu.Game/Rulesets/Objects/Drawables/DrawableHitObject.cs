@@ -761,6 +761,10 @@ namespace osu.Game.Rulesets.Objects.Drawables
             }
 
             Result.TimeOffset = Math.Min(MaximumJudgementOffset, Time.Current - HitObject.GetEndTime());
+            if (Result.TimeOffset < 0)
+                Result.FastSlow = FastSlow.Fast;
+            if (Result.TimeOffset > 0)
+                Result.FastSlow = FastSlow.Slow;
 
             if (Result.HasResult)
                 updateState(Result.IsHit ? ArmedState.Hit : ArmedState.Miss);
