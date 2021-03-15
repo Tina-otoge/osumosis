@@ -40,6 +40,14 @@ namespace osu.Game.Screens.Play.HUD
                         RequiredDisplayDigits.Value = 8;
                         break;
 
+                    case ScoringMode.Accuracy:
+                        RequiredDisplayDigits.Value = 7;
+                        break;
+
+                    case ScoringMode.ExScore:
+                        RequiredDisplayDigits.Value = 1;
+                        break;
+
                     default:
                         throw new ArgumentOutOfRangeException(nameof(scoreMode));
                 }
