@@ -51,9 +51,12 @@ namespace osu.Game.Graphics
                     return Color4Extensions.FromHex(@"de31ae");
 
                 case ScoreRank.SH:
+                case ScoreRank.Spp:
+                case ScoreRank.Sp:
                 case ScoreRank.S:
                     return Color4Extensions.FromHex(@"02b5c3");
 
+                case ScoreRank.Ap:
                 case ScoreRank.A:
                     return Color4Extensions.FromHex(@"88da20");
 

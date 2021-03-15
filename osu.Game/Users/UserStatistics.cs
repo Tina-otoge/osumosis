@@ -101,9 +101,12 @@ namespace osu.Game.Users
                             return SPlus ?? 0;
 
                         case ScoreRank.S:
+                        case ScoreRank.Spp:
+                        case ScoreRank.Sp:
                             return S;
 
                         case ScoreRank.A:
+                        case ScoreRank.Ap:
                             return A;
 
                         default:

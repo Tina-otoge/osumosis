@@ -69,7 +69,7 @@ namespace osu.Game.Online.Leaderboards
             };
         }
 
-        public static string GetRankName(ScoreRank rank) => rank.GetDescription().TrimEnd('+');
+        public static string GetRankName(ScoreRank rank) => rank.GetDescription();
 
         /// <summary>
         ///  Retrieves the grade text colour.
@@ -84,6 +84,9 @@ namespace osu.Game.Online.Leaderboards
 
                 case ScoreRank.X:
                 case ScoreRank.S:
+                case ScoreRank.Spp:
+                case ScoreRank.Sp:
+                case ScoreRank.Ap:
                     return ColourInfo.GradientVertical(Color4Extensions.FromHex(@"ffe7a8"), Color4Extensions.FromHex(@"ffb800"));
 
                 case ScoreRank.A:
