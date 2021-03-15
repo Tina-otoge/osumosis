@@ -1,116 +1,87 @@
-<p align="center">
-  <img width="500px" src="assets/lazer.png">
-</p>
+# osumosis
+The osu! client to play on the [osmosis server](https://github.com/Tina-otoge/osmosis-server),
+a server that entirely disregards combo to calculate scores.
 
-# osu!
+## This is a fork of the official osu!
 
-[![Build status](https://ci.appveyor.com/api/projects/status/u2p01nx7l6og8buh?svg=true)](https://ci.appveyor.com/project/peppy/osu)
-[![GitHub release](https://img.shields.io/github/release/ppy/osu.svg)](https://github.com/ppy/osu/releases/latest)
-[![CodeFactor](https://www.codefactor.io/repository/github/ppy/osu/badge)](https://www.codefactor.io/repository/github/ppy/osu)
-[![dev chat](https://discordapp.com/api/guilds/188630481301012481/widget.png?style=shield)](https://discord.gg/ppy)
+Codename "lazer" is the upcoming version of the free-to-play rhythm game "osu!".
+This project is modification of this client which adds a few features there and
+there.
 
-A free-to-win rhythm game. Rhythm is just a *click* away!
+Read all about [osu! lazer on their own GitHub](https://github.com/ppy/osu).
 
-The future of [osu!](https://osu.ppy.sh) and the beginning of an open era! Commonly known by the codename *osu!lazer*. Pew pew.
+## Notable changes between osumosis and osu! (lazer)
 
-## Status
+:warning: osumosis does not change any behavior related to the official server,
+this means you'll still connect to your osu! account, see the official
+leaderboards, and the chat. The only server-related added feature is the fact
+that your scores are submitted to the osmosis server when you finish a song.
 
-This project is under heavy development, but is in a stable state. Users are encouraged to try it out and keep it installed alongside the stable *osu!* client. It will continue to evolve to the point of eventually replacing the existing stable client as an update.
+Since this is not an official release, you can not submit scores to the official
+server using it. This also means no multiplayer support!
 
-**IMPORTANT:** Gameplay mechanics (and other features which you may have come to know and love) are in a constant state of flux. Game balance and final quality-of-life passses come at the end of development, preceeded by experimentation and changes which may potentially **reduce playability or usability**. This is done in order to allow us to move forward as developers and designers more efficiently. If this offends you, please consider sticking to the stable releases of osu! (found on the website). We are not yet open to heated discussion over game mechanics and will not be using github as a forum for such discussions just yet.
+- Scores are submitted to the open source server implementation at https://osmosis.tina.moe
+- A mod has been added to disable the passive HP drain ("No Drain")
+- Two new score calculation algorithms have been added (see "Score display mode" in settings):
+  - "Accuracy" is a 7 digits representation of your accuracy, combo isn't used at all (this is osmosis' prefered scoring)
+  - "Ex score" inspired by BEMANI, where perfects grant 2 points each, lower judges scale from this
+- More "grades" (or "score rank") have been added:
+	- A+ is awarded between an A and an S
+	- S+ and S++ can be awarded between an S and an SS
 
-We are accepting bug reports (please report with as much detail as possible and follow the existing issue templates). Feature requests are also welcome, but understand that our focus is on completing the game to feature parity before adding new features. A few resources are available as starting points to getting involved and understanding the project:
 
-- Detailed release changelogs are available on the [official osu! site](https://osu.ppy.sh/home/changelog/lazer).
-- You can learn more about our approach to [project management](https://github.com/ppy/osu/wiki/Project-management).
-- Read peppy's [latest blog post](https://blog.ppy.sh/a-definitive-lazer-faq/) exploring where lazer is currently and the roadmap going forward.
+### Planned / Temporarily removed features
 
-## Running osu!
+- Being able to display FAST or SLOW alongside judges
+- Being able to set a pacemaker, allow you to set goals (ie: S rank) and see how close you are to it in real-time
+- Output the current state of the game to a text file, for ease of use in streaming setups
 
-If you are looking to install or test osu! without setting up a development environment, you can consume our [binary releases](https://github.com/ppy/osu/releases). Handy links below will download the latest version for your operating system of choice:
+## Notable changes between osu! lazer and the current stable osu!
 
-**Latest build:**
+- lazer is open source, stable is not
+- Since it's open source, it's easy to modify it, add new mods, features or even custom modes
+- Inputs are polled on a separate thread
+  - This means your FPS do not impact your input lag, you can run the game at 10 FPS and still get <1ms accurate hits
+- Not only the entire codebase but also the UI has been revamped
+- You can do most of what you can do on the website directly ingame
+  - This includes downloading mapsets and checking user profiles
+- lazer scoring is different than stable's scoring and stable's ScoreV2
+- lazer judges the accuracy on slider heads, this means you can get a "100" or "50" on sliders
+  - This can be disabled using the "Classic" mod
+  - The "Classic" mod makes lazer behaves as closely as possible to stable
+- You can customize the difficulty settings (AR, HP, OD, CS) of beatmaps using a mod called "Difficulty Adjust"
+- You can customize the rate of Double Time and Half Time
+- There are plenty of fun mods to alter gameplay
+- A density graph is displayed in the bottom during songs, allowing you to be aware of hard and slow parts in advance
 
-| [Windows (x64)](https://github.com/ppy/osu/releases/latest/download/install.exe)  | [macOS 10.12+](https://github.com/ppy/osu/releases/latest/download/osu.app.zip) | [Linux (x64)](https://github.com/ppy/osu/releases/latest/download/osu.AppImage) | [iOS(iOS 10+)](https://osu.ppy.sh/home/testflight) | [Android (5+)](https://github.com/ppy/osu/releases/latest/download/sh.ppy.osulazer.apk)
-| ------------- | ------------- | ------------- | ------------- | ------------- |
+And many other stuffs I did not mention.
 
-- The iOS testflight link may fill up (Apple has a hard limit of 10,000 users). We reset it occasionally when this happens. Please do not ask about this. Check back regularly for link resets or follow [peppy](https://twitter.com/ppy) on twitter for announcements of link resets.
+## Running osumosis
 
-- When running on Windows 7 or 8.1, *[additional prerequisites](https://docs.microsoft.com/en-us/dotnet/core/install/windows?tabs=net50&pivots=os-windows#dependencies)** may be required to correctly run .NET 5 applications if your operating system is not up-to-date with the latest service packs.
-If your platform is not listed above, there is still a chance you can manually build it by following the instructions below.
+:warning: Beware! osumosis is in a gray area where it's not really allowed to be
+distributed. osu! is trademarked and usage of its name, logo and assets without
+permission is illegal.
 
-## Developing a custom ruleset
+osumosis and the osmosis server are projects I run as a hobby. I like osu! as a
+game and project and I like having the possibility to play Ouendan-style
+gameplay on my PC. However being discontent about some aspects of the game,
+mainly but not only combo-based scoring, I decided to modify the game to my
+liking.
 
-osu! is designed to have extensible modular gameplay modes, called "rulesets". Building one of these allows a developer to harness the power of osu! for their own game style. To get started working on a ruleset, we have some templates available [here](https://github.com/ppy/osu-templates).
+By running osumosis, you must be aware that this is an unsupported version of
+osu! run by someone who is not an official staff, and that the existence of this
+project has never been approved by osu!.
 
-You can see some examples of custom rulesets by visiting the [custom ruleset directory](https://github.com/ppy/osu/issues/5852).
+### How to actually run it
 
-## Developing osu!
+- You need the .NET 3.1 SDK, for Windows and macOS, go there:  
+  https://dotnet.microsoft.com/download/dotnet-core/3.1  
+  And download the corresponding installer in the "Build apps - SDK" section
 
-Please make sure you have the following prerequisites:
+- [Download the source code](https://github.com/Tina-otoge/osumosis/archive/master.zip)
+  and extract it somwhere.
 
-- A desktop platform with the [.NET 5.0 SDK](https://dotnet.microsoft.com/download) or higher installed.
-- When developing with mobile, [Xamarin](https://docs.microsoft.com/en-us/xamarin/) is required, which is shipped together with Visual Studio or [Visual Studio for Mac](https://visualstudio.microsoft.com/vs/mac/).
-- When working with the codebase, we recommend using an IDE with intelligent code completion and syntax highlighting, such as [Visual Studio 2019+](https://visualstudio.microsoft.com/vs/), [JetBrains Rider](https://www.jetbrains.com/rider/) or [Visual Studio Code](https://code.visualstudio.com/).
-- When running on Linux, please have a system-wide FFmpeg installation available to support video decoding.
+- Run `dotnet run --project osu.Desktop -c Release` in it  
+  Alternatively, run the `launch.bat` script that runs it for you
 
-### Downloading the source code
-
-Clone the repository:
-
-```shell
-git clone https://github.com/ppy/osu
-cd osu
-```
-
-To update the source code to the latest commit, run the following command inside the `osu` directory:
-
-```shell
-git pull
-```
-
-### Building
-
-Build configurations for the recommended IDEs (listed above) are included. You should use the provided Build/Run functionality of your IDE to get things going. When testing or building new components, it's highly encouraged you use the `VisualTests` project/configuration. More information on this is provided [below](#contributing).
-
-- Visual Studio / Rider users should load the project via one of the platform-specific `.slnf` files, rather than the main `.sln.` This will allow access to template run configurations.
-
-You can also build and run *osu!* from the command-line with a single command:
-
-```shell
-dotnet run --project osu.Desktop
-```
-
-If you are not interested in debugging *osu!*, you can add `-c Release` to gain performance. In this case, you must replace `Debug` with `Release` in any commands mentioned in this document.
-
-If the build fails, try to restore NuGet packages with `dotnet restore`.
-
-_Due to a historical feature gap between .NET Core and Xamarin, running `dotnet` CLI from the root directory will not work for most commands. This can be resolved by specifying a target `.csproj` or the helper project at `build/Desktop.proj`. Configurations have been provided to work around this issue for all supported IDEs mentioned above._
-
-### Testing with resource/framework modifications
-
-Sometimes it may be necessary to cross-test changes in [osu-resources](https://github.com/ppy/osu-resources) or [osu-framework](https://github.com/ppy/osu-framework). This can be achieved by running some commands as documented on the [osu-resources](https://github.com/ppy/osu-resources/wiki/Testing-local-resources-checkout-with-other-projects) and [osu-framework](https://github.com/ppy/osu-framework/wiki/Testing-local-framework-checkout-with-other-projects) wiki pages.
-
-### Code analysis
-
-Before committing your code, please run a code formatter. This can be achieved by running `dotnet format` in the command line, or using the `Format code` command in your IDE.
-
-We have adopted some cross-platform, compiler integrated analyzers. They can provide warnings when you are editing, building inside IDE or from command line, as-if they are provided by the compiler itself.
-
-JetBrains ReSharper InspectCode is also used for wider rule sets. You can run it from PowerShell with `.\InspectCode.ps1`, which is [only supported on Windows](https://youtrack.jetbrains.com/issue/RSRP-410004). Alternatively, you can install ReSharper or use Rider to get inline support in your IDE of choice.
-
-## Contributing
-
-When it comes to contributing to the project, the two main things you can do to help out are reporting issues and submitting pull requests. Based on past experiences, we have prepared a [list of contributing guidelines](CONTRIBUTING.md) that should hopefully ease you into our collaboration process and answer the most frequently-asked questions.
-
-Note that while we already have certain standards in place, nothing is set in stone. If you have an issue with the way code is structured, with any libraries we are using, or with any processes involved with contributing, *please* bring it up. We welcome all feedback so we can make contributing to this project as painless as possible.
-
-For those interested, we love to reward quality contributions via [bounties](https://docs.google.com/spreadsheets/d/1jNXfj_S3Pb5PErA-czDdC9DUu4IgUbe1Lt8E7CYUJuE/view?&rm=minimal#gid=523803337), paid out via PayPal or osu!supporter tags. Don't hesitate to [request a bounty](https://docs.google.com/forms/d/e/1FAIpQLSet_8iFAgPMG526pBZ2Kic6HSh7XPM3fE8xPcnWNkMzINDdYg/viewform) for your work on this project.
-
-## Licence
-
-*osu!*'s code and framework are licensed under the [MIT licence](https://opensource.org/licenses/MIT). Please see [the licence file](LICENCE) for more information. [tl;dr](https://tldrlegal.com/license/mit-license) you can do whatever you want as long as you include the original copyright and license notice in any copy of the software/source.
-
-Please note that this *does not cover* the usage of the "osu!" or "ppy" branding in any software, resources, advertising or promotion, as this is protected by trademark law.
-
-Please also note that game resources are covered by a separate licence. Please see the [ppy/osu-resources](https://github.com/ppy/osu-resources) repository for clarifications.
+TLDR: Download .NET SDK 3.1 and the code of osumosis, double click on `launch.bat`, enjoy.
