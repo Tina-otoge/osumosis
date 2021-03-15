@@ -285,8 +285,14 @@ namespace osu.Game.Rulesets.Scoring
         {
             if (acc == 1)
                 return ScoreRank.X;
+            if (acc > 0.985)
+                return ScoreRank.Spp;
+            if (acc > 0.9725)
+                return ScoreRank.Sp;
             if (acc > 0.95)
                 return ScoreRank.S;
+            if (acc > 0.925)
+                return ScoreRank.Ap;
             if (acc > 0.9)
                 return ScoreRank.A;
             if (acc > 0.8)
