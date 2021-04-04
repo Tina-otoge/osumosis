@@ -10,7 +10,7 @@ namespace osu.Game.Rulesets.Mods
     {
         public override string Name => "No drain";
         public override string Acronym => "ND";
-        public override string Description => "Removes the passive HP drain, because punishing slow parts is objectively unfair.";
+        public override string Description => "Removes the passive HP drain, you won't lose HP over time anymore.";
         public override double ScoreMultiplier => 1;
         public override IconUsage? Icon => FontAwesome.Solid.BandAid;
         public override ModType Type => ModType.DifficultyReduction;
