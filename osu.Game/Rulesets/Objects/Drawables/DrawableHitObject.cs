@@ -11,7 +11,6 @@ using osu.Framework.Bindables;
 using osu.Framework.Extensions.TypeExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Primitives;
-using osu.Framework.Logging;
 using osu.Framework.Threading;
 using osu.Game.Audio;
 using osu.Game.Rulesets.Judgements;
@@ -57,8 +56,8 @@ namespace osu.Game.Rulesets.Objects.Drawables
 
         public virtual IEnumerable<HitSampleInfo> GetSamples() => HitObject.Samples;
 
-        private readonly Lazy<List<DrawableHitObject>> nestedHitObjects = new Lazy<List<DrawableHitObject>>();
-        public IReadOnlyList<DrawableHitObject> NestedHitObjects => nestedHitObjects.IsValueCreated ? nestedHitObjects.Value : (IReadOnlyList<DrawableHitObject>)Array.Empty<DrawableHitObject>();
+        private readonly List<DrawableHitObject> nestedHitObjects = new List<DrawableHitObject>();
+        public IReadOnlyList<DrawableHitObject> NestedHitObjects => nestedHitObjects;
 
         /// <summary>
         /// Whether this object should handle any user input events.
@@ -250,7 +249,7 @@ namespace osu.Game.Rulesets.Objects.Drawables
                 // Must be done before the nested DHO is added to occur before the nested Apply()!
                 drawableNested.ParentHitObject = this;
 
-                nestedHitObjects.Value.Add(drawableNested);
+                nestedHitObjects.Add(drawableNested);
                 AddNestedHitObject(drawableNested);
             }
 
@@ -306,18 +305,15 @@ namespace osu.Game.Rulesets.Objects.Drawables
             if (Samples != null)
                 Samples.Samples = null;
 
-            if (nestedHitObjects.IsValueCreated)
+            foreach (var obj in nestedHitObjects)
             {
-                foreach (var obj in nestedHitObjects.Value)
-                {
-                    obj.OnNewResult -= onNewResult;
-                    obj.OnRevertResult -= onRevertResult;
-                    obj.ApplyCustomUpdateState -= onApplyCustomUpdateState;
-                }
-
-                nestedHitObjects.Value.Clear();
-                ClearNestedHitObjects();
+                obj.OnNewResult -= onNewResult;
+                obj.OnRevertResult -= onRevertResult;
+                obj.ApplyCustomUpdateState -= onApplyCustomUpdateState;
             }
+
+            nestedHitObjects.Clear();
+            ClearNestedHitObjects();
 
             HitObject.DefaultsApplied -= onDefaultsApplied;
 
@@ -575,7 +571,6 @@ namespace osu.Game.Rulesets.Objects.Drawables
         /// Calculate the position to be used for sample playback at a specified X position (0..1).
         /// </summary>
         /// <param name="position">The lookup X position. Generally should be <see cref="SamplePlaybackPosition"/>.</param>
-        /// <returns></returns>
         protected double CalculateSamplePlaybackBalance(double position)
         {
             const float balance_adjust_amount = 0.4f;
@@ -735,24 +730,6 @@ namespace osu.Game.Rulesets.Objects.Drawables
 
             if (!Result.HasResult)
                 throw new InvalidOperationException($"{GetType().ReadableName()} applied a {nameof(JudgementResult)} but did not update {nameof(JudgementResult.Type)}.");
-
-            // Some (especially older) rulesets use scorable judgements instead of the newer ignorehit/ignoremiss judgements.
-            // Can be removed 20210328
-            if (Result.Judgement.MaxResult == HitResult.IgnoreHit)
-            {
-                HitResult originalType = Result.Type;
-
-                if (Result.Type == HitResult.Miss)
-                    Result.Type = HitResult.IgnoreMiss;
-                else if (Result.Type >= HitResult.Meh && Result.Type <= HitResult.Perfect)
-                    Result.Type = HitResult.IgnoreHit;
-
-                if (Result.Type != originalType)
-                {
-                    Logger.Log($"{GetType().ReadableName()} applied an invalid hit result ({originalType}) when {nameof(HitResult.IgnoreMiss)} or {nameof(HitResult.IgnoreHit)} is expected.\n"
-                               + $"This has been automatically adjusted to {Result.Type}, and support will be removed from 2021-03-28 onwards.", level: LogLevel.Important);
-                }
-            }
 
             if (!Result.Type.IsValidHitResult(Result.Judgement.MinResult, Result.Judgement.MaxResult))
             {
