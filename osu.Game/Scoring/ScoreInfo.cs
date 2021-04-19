@@ -145,7 +145,7 @@ namespace osu.Game.Scoring
         [JsonIgnore]
         public int BeatmapInfoID { get; set; }
 
-        [JsonIgnore]
+        /* [JsonIgnore] Needed in osmosis */
         public virtual BeatmapInfo Beatmap { get; set; }
 
         [JsonIgnore]
