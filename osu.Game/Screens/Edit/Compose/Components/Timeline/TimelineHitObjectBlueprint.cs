@@ -26,7 +26,7 @@ using osuTK.Graphics;
 
 namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 {
-    public class TimelineHitObjectBlueprint : SelectionBlueprint
+    public class TimelineHitObjectBlueprint : SelectionBlueprint<HitObject>
     {
         private const float circle_size = 38;
 
@@ -39,6 +39,7 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
 
         private Bindable<int> indexInCurrentComboBindable;
         private Bindable<int> comboIndexBindable;
+        private Bindable<Color4> displayColourBindable;
 
         private readonly ExtendableCircle circle;
         private readonly Border border;
@@ -49,13 +50,13 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         [Resolved]
         private ISkinSource skin { get; set; }
 
-        public TimelineHitObjectBlueprint(HitObject hitObject)
-            : base(hitObject)
+        public TimelineHitObjectBlueprint(HitObject item)
+            : base(item)
         {
             Anchor = Anchor.CentreLeft;
             Origin = Anchor.CentreLeft;
 
-            startTime = hitObject.StartTimeBindable.GetBoundCopy();
+            startTime = item.StartTimeBindable.GetBoundCopy();
             startTime.BindValueChanged(time => X = (float)time.NewValue, true);
 
             RelativePositionAxes = Axes.X;
@@ -95,9 +96,9 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
                 },
             });
 
-            if (hitObject is IHasDuration)
+            if (item is IHasDuration)
             {
-                colouredComponents.Add(new DragArea(hitObject)
+                colouredComponents.Add(new DragArea(item)
                 {
                     OnDragHandled = e => OnDragHandled?.Invoke(e)
                 });
@@ -108,60 +109,77 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
         {
             base.LoadComplete();
 
-            if (HitObject is IHasComboInformation comboInfo)
+            switch (Item)
             {
-                indexInCurrentComboBindable = comboInfo.IndexInCurrentComboBindable.GetBoundCopy();
-                indexInCurrentComboBindable.BindValueChanged(_ => updateComboIndex(), true);
+                case IHasDisplayColour displayColour:
+                    displayColourBindable = displayColour.DisplayColour.GetBoundCopy();
+                    displayColourBindable.BindValueChanged(_ => updateColour(), true);
+                    break;
 
-                comboIndexBindable = comboInfo.ComboIndexBindable.GetBoundCopy();
-                comboIndexBindable.BindValueChanged(_ => updateComboColour(), true);
+                case IHasComboInformation comboInfo:
+                    indexInCurrentComboBindable = comboInfo.IndexInCurrentComboBindable.GetBoundCopy();
+                    indexInCurrentComboBindable.BindValueChanged(_ => updateComboIndex(), true);
 
-                skin.SourceChanged += updateComboColour;
+                    comboIndexBindable = comboInfo.ComboIndexBindable.GetBoundCopy();
+                    comboIndexBindable.BindValueChanged(_ => updateColour(), true);
+
+                    skin.SourceChanged += updateColour;
+                    break;
             }
         }
 
         protected override void OnSelected()
         {
             // base logic hides selected blueprints when not selected, but timeline doesn't do that.
-            updateComboColour();
+            updateColour();
         }
 
         protected override void OnDeselected()
         {
             // base logic hides selected blueprints when not selected, but timeline doesn't do that.
-            updateComboColour();
+            updateColour();
         }
 
         private void updateComboIndex() => comboIndexText.Text = (indexInCurrentComboBindable.Value + 1).ToString();
 
-        private void updateComboColour()
+        private void updateColour()
         {
-            if (!(HitObject is IHasComboInformation combo))
-                return;
+            Color4 colour;
 
-            var comboColours = skin.GetConfig<GlobalSkinColours, IReadOnlyList<Color4>>(GlobalSkinColours.ComboColours)?.Value ?? Array.Empty<Color4>();
-            var comboColour = combo.GetComboColour(comboColours);
+            switch (Item)
+            {
+                case IHasDisplayColour displayColour:
+                    colour = displayColour.DisplayColour.Value;
+                    break;
+
+                case IHasComboInformation combo:
+                {
+                    var comboColours = skin.GetConfig<GlobalSkinColours, IReadOnlyList<Color4>>(GlobalSkinColours.ComboColours)?.Value ?? Array.Empty<Color4>();
+                    colour = combo.GetComboColour(comboColours);
+                    break;
+                }
+
+                default:
+                    return;
+            }
 
             if (IsSelected)
             {
                 border.Show();
-                comboColour = comboColour.Lighten(0.3f);
+                colour = colour.Lighten(0.3f);
             }
             else
             {
                 border.Hide();
             }
 
-            if (HitObject is IHasDuration duration && duration.Duration > 0)
-                circle.Colour = ColourInfo.GradientHorizontal(comboColour, comboColour.Lighten(0.4f));
+            if (Item is IHasDuration duration && duration.Duration > 0)
+                circle.Colour = ColourInfo.GradientHorizontal(colour, colour.Lighten(0.4f));
             else
-                circle.Colour = comboColour;
+                circle.Colour = colour;
 
             var col = circle.Colour.TopLeft.Linear;
-            float brightness = col.R + col.G + col.B;
-
-            // decide the combo index colour based on brightness?
-            colouredComponents.Colour = OsuColour.Gray(brightness > 0.5f ? 0.2f : 0.9f);
+            colouredComponents.Colour = OsuColour.ForegroundTextColourFor(col);
         }
 
         protected override void Update()
@@ -169,14 +187,14 @@ namespace osu.Game.Screens.Edit.Compose.Components.Timeline
             base.Update();
 
             // no bindable so we perform this every update
-            float duration = (float)(HitObject.GetEndTime() - HitObject.StartTime);
+            float duration = (float)(Item.GetEndTime() - Item.StartTime);
 
             if (Width != duration)
             {
                 Width = duration;
 
                 // kind of haphazard but yeah, no bindables.
-                if (HitObject is IHasRepeats repeats)
+                if (Item is IHasRepeats repeats)
                     updateRepeats(repeats);
             }
         }

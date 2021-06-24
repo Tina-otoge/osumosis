@@ -40,7 +40,7 @@ namespace osu.Game.Tests.Visual.Multiplayer
         private void load(GameHost host, AudioManager audio)
         {
             Dependencies.Cache(rulesets = new RulesetStore(ContextFactory));
-            Dependencies.Cache(beatmaps = new BeatmapManager(LocalStorage, ContextFactory, rulesets, null, audio, host, Beatmap.Default));
+            Dependencies.Cache(beatmaps = new BeatmapManager(LocalStorage, ContextFactory, rulesets, null, audio, Resources, host, Beatmap.Default));
             beatmaps.Import(TestResources.GetQuickTestBeatmapForImport()).Wait();
 
             importedSet = beatmaps.GetAllUsableBeatmapSetsEnumerable(IncludedDetails.All).First();
@@ -119,8 +119,8 @@ namespace osu.Game.Tests.Visual.Multiplayer
 
             AddStep("join other user (ready)", () =>
             {
-                Client.AddUser(new User { Id = 55 });
-                Client.ChangeUserState(55, MultiplayerUserState.Ready);
+                Client.AddUser(new User { Id = PLAYER_1_ID });
+                Client.ChangeUserState(PLAYER_1_ID, MultiplayerUserState.Ready);
             });
 
             AddStep("click spectate button", () =>

@@ -61,6 +61,9 @@ namespace osu.Game.Configuration
 
             SetDefault(OsuSetting.ShowOnlineExplicitContent, false);
 
+            SetDefault(OsuSetting.NotifyOnUsernameMentioned, true);
+            SetDefault(OsuSetting.NotifyOnPrivateMessage, true);
+
             // Audio
             SetDefault(OsuSetting.VolumeInactive, 0.25, 0, 1, 0.01);
 
@@ -104,7 +107,6 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.KeyOverlay, false);
             SetDefault(OsuSetting.PositionalHitSounds, true);
             SetDefault(OsuSetting.AlwaysPlayFirstComboBreak, true);
-            SetDefault(OsuSetting.ScoreMeter, ScoreMeterType.HitErrorBoth);
 
             SetDefault(OsuSetting.FloatingComments, false);
 
@@ -143,6 +145,7 @@ namespace osu.Game.Configuration
             SetDefault(OsuSetting.DiscordRichPresence, DiscordRichPresenceMode.Full);
 
             SetDefault(OsuSetting.EditorWaveformOpacity, 0.25f);
+            SetDefault(OsuSetting.EditorHitAnimations, false);
         }
 
         public OsuConfigManager(Storage storage)
@@ -212,7 +215,6 @@ namespace osu.Game.Configuration
         KeyOverlay,
         PositionalHitSounds,
         AlwaysPlayFirstComboBreak,
-        ScoreMeter,
         FloatingComments,
         HUDVisibilityMode,
         ShowProgressGraph,
@@ -260,12 +262,15 @@ namespace osu.Game.Configuration
         ScalingSizeY,
         UIScale,
         IntroSequence,
+        NotifyOnUsernameMentioned,
+        NotifyOnPrivateMessage,
         UIHoldActivationDelay,
         HitLighting,
         MenuBackgroundSource,
         GameplayDisableWinKey,
         SeasonalBackgroundMode,
         EditorWaveformOpacity,
+        EditorHitAnimations,
         DiscordRichPresence,
         AutomaticallyDownloadWhenSpectating,
         ShowOnlineExplicitContent,

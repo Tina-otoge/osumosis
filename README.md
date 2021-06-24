@@ -29,7 +29,6 @@ server using it. This also means no multiplayer support!
 	- A+ is awarded between an A and an S
 	- S+ and S++ can be awarded between an S and an SS
 
-
 ### Planned / Temporarily removed features
 
 - Being able to display FAST or SLOW alongside judges

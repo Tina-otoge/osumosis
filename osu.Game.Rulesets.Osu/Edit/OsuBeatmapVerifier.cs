@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Edit.Checks.Components;
 using osu.Game.Rulesets.Osu.Edit.Checks;
@@ -14,9 +13,17 @@ namespace osu.Game.Rulesets.Osu.Edit
     {
         private readonly List<ICheck> checks = new List<ICheck>
         {
-            new CheckOffscreenObjects()
+            // Compose
+            new CheckOffscreenObjects(),
+
+            // Spread
+            new CheckTimeDistanceEquality(),
+            new CheckLowDiffOverlaps()
         };
 
-        public IEnumerable<Issue> Run(IBeatmap beatmap) => checks.SelectMany(check => check.Run(beatmap));
+        public IEnumerable<Issue> Run(BeatmapVerifierContext context)
+        {
+            return checks.SelectMany(check => check.Run(context));
+        }
     }
 }

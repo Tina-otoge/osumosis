@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -131,6 +132,9 @@ namespace osu.Game.Beatmaps
                 }
 
                 IBeatmapProcessor processor = rulesetInstance.CreateBeatmapProcessor(converted);
+
+                foreach (var mod in mods.OfType<IApplicableToBeatmapProcessor>())
+                    mod.ApplyToBeatmapProcessor(processor);
 
                 processor?.PreProcess();
 
@@ -323,8 +327,11 @@ namespace osu.Game.Beatmaps
         public bool SkinLoaded => skin.IsResultAvailable;
         public ISkin Skin => skin.Value;
 
-        protected virtual ISkin GetSkin() => new DefaultSkin();
+        protected abstract ISkin GetSkin();
+
         private readonly RecyclableLazy<ISkin> skin;
+
+        public abstract Stream GetStream(string storagePath);
 
         public class RecyclableLazy<T>
         {
