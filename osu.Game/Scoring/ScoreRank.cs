@@ -74,7 +74,8 @@ namespace osu.Game.Scoring
                     return BeatmapsStrings.RankD;
 
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(value), value, null);
+                    return value.ToString();
+                    /* throw new ArgumentOutOfRangeException(nameof(value), value, null); */
             }
         }
     }
