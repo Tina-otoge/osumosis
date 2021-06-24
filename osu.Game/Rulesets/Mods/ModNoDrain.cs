@@ -14,7 +14,6 @@ namespace osu.Game.Rulesets.Mods
         public override double ScoreMultiplier => 1;
         public override IconUsage? Icon => FontAwesome.Solid.BandAid;
         public override ModType Type => ModType.DifficultyReduction;
-        public override bool Ranked => true;
 
         public virtual void ReadFromDifficulty(BeatmapDifficulty difficulty)
         {
