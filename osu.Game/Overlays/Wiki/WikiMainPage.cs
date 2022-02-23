@@ -9,7 +9,7 @@ using osu.Framework.Graphics.Containers;
 using HtmlAgilityPack;
 using osu.Framework.Allocation;
 using osu.Game.Graphics;
-using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.Containers;
 
 namespace osu.Game.Overlays.Wiki
 {
@@ -56,12 +56,12 @@ namespace osu.Game.Overlays.Wiki
                 {
                     Vertical = 30,
                 },
-                Child = new OsuSpriteText
+                Child = new OsuTextFlowContainer(t => t.Font = OsuFont.GetFont(Typeface.Inter, size: 12, weight: FontWeight.Light))
                 {
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
                     Text = blurbNode.InnerText,
-                    Font = OsuFont.GetFont(size: 12),
-                    Anchor = Anchor.TopCentre,
-                    Origin = Anchor.TopCentre,
+                    TextAnchor = Anchor.TopCentre,
                 }
             };
         }
@@ -72,11 +72,11 @@ namespace osu.Game.Overlays.Wiki
 
             Debug.Assert(panelsNode.Length > 1);
 
-            var i = 0;
+            int i = 0;
 
             while (i < panelsNode.Length)
             {
-                var isFullWidth = panelsNode[i].HasClass("wiki-main-page-panel--full");
+                bool isFullWidth = panelsNode[i].HasClass("wiki-main-page-panel--full");
 
                 if (isFullWidth)
                 {

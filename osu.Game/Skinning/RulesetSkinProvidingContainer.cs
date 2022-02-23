@@ -1,10 +1,16 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
+using osu.Framework.Audio;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.IO.Stores;
+using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.UI;
@@ -42,39 +48,48 @@ namespace osu.Game.Skinning
             };
         }
 
-        [Resolved]
-        private ISkinSource skinSource { get; set; }
+        private ResourceStoreBackedSkin rulesetResourcesSkin;
 
-        [BackgroundDependencyLoader]
-        private void load()
+        protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
         {
-            UpdateSkins();
-            skinSource.SourceChanged += OnSourceChanged;
+            if (Ruleset.CreateResourceStore() is IResourceStore<byte[]> resources)
+                rulesetResourcesSkin = new ResourceStoreBackedSkin(resources, parent.Get<GameHost>(), parent.Get<AudioManager>());
+
+            return base.CreateChildDependencies(parent);
         }
 
-        protected override void OnSourceChanged()
+        protected override void RefreshSources()
         {
-            UpdateSkins();
-            base.OnSourceChanged();
-        }
+            // Populate a local list first so we can adjust the returned order as we go.
+            var sources = new List<ISkin>();
 
-        protected virtual void UpdateSkins()
-        {
-            SkinSources.Clear();
+            Debug.Assert(ParentSource != null);
 
-            foreach (var skin in skinSource.AllSources)
+            foreach (var skin in ParentSource.AllSources)
             {
                 switch (skin)
                 {
                     case LegacySkin legacySkin:
-                        SkinSources.Add(GetLegacyRulesetTransformedSkin(legacySkin));
+                        sources.Add(GetLegacyRulesetTransformedSkin(legacySkin));
                         break;
 
                     default:
-                        SkinSources.Add(skin);
+                        sources.Add(skin);
                         break;
                 }
             }
+
+            int lastDefaultSkinIndex = sources.IndexOf(sources.OfType<DefaultSkin>().LastOrDefault());
+
+            // Ruleset resources should be given the ability to override game-wide defaults
+            // This is achieved by placing them before the last instance of DefaultSkin.
+            // Note that DefaultSkin may not be present in some test scenes.
+            if (lastDefaultSkinIndex >= 0)
+                sources.Insert(lastDefaultSkinIndex, rulesetResourcesSkin);
+            else
+                sources.Add(rulesetResourcesSkin);
+
+            SetSources(sources);
         }
 
         protected ISkin GetLegacyRulesetTransformedSkin(ISkin legacySkin)
@@ -93,8 +108,7 @@ namespace osu.Game.Skinning
         {
             base.Dispose(isDisposing);
 
-            if (skinSource != null)
-                skinSource.SourceChanged -= OnSourceChanged;
+            rulesetResourcesSkin?.Dispose();
         }
     }
 }

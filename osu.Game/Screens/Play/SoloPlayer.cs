@@ -3,21 +3,36 @@
 
 using System;
 using System.Diagnostics;
+using osu.Game.Beatmaps;
 using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
 using osu.Game.Online.Solo;
+using osu.Game.Rulesets;
 using osu.Game.Scoring;
 
 namespace osu.Game.Screens.Play
 {
     public class SoloPlayer : SubmittingPlayer
     {
+        public SoloPlayer()
+            : this(null)
+        {
+        }
+
+        protected SoloPlayer(PlayerConfiguration configuration = null)
+            : base(configuration)
+        {
+        }
+
         protected override APIRequest<APIScoreToken> CreateTokenRequest()
         {
-            if (!(Beatmap.Value.BeatmapInfo.OnlineBeatmapID is int beatmapId))
+            int beatmapId = Beatmap.Value.BeatmapInfo.OnlineID;
+            int rulesetId = Ruleset.Value.OnlineID;
+
+            if (beatmapId <= 0)
                 return null;
 
-            if (!(Ruleset.Value.ID is int rulesetId))
+            if (rulesetId < 0 || rulesetId > ILegacyRuleset.MAX_LEGACY_RULESET_ID)
                 return null;
 
             return new CreateSoloScoreRequest(beatmapId, rulesetId, Game.VersionHash);
@@ -27,11 +42,11 @@ namespace osu.Game.Screens.Play
 
         protected override APIRequest<MultiplayerScore> CreateSubmissionRequest(Score score, long token)
         {
-            Debug.Assert(Beatmap.Value.BeatmapInfo.OnlineBeatmapID != null);
+            IBeatmapInfo beatmap = score.ScoreInfo.BeatmapInfo;
 
-            int beatmapId = Beatmap.Value.BeatmapInfo.OnlineBeatmapID.Value;
+            Debug.Assert(beatmap.OnlineID > 0);
 
-            return new SubmitSoloScoreRequest(beatmapId, token, score.ScoreInfo);
+            return new SubmitSoloScoreRequest(score.ScoreInfo, token, beatmap.OnlineID);
         }
     }
 }

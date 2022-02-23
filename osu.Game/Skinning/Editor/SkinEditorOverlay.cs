@@ -1,12 +1,12 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using osu.Framework.Allocation;
+using JetBrains.Annotations;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Bindings;
-using osu.Game.Graphics;
+using osu.Framework.Input.Events;
 using osu.Game.Graphics.Containers;
 using osu.Game.Input.Bindings;
 
@@ -19,12 +19,11 @@ namespace osu.Game.Skinning.Editor
     public class SkinEditorOverlay : CompositeDrawable, IKeyBindingHandler<GlobalAction>
     {
         private readonly ScalingContainer target;
+
+        [CanBeNull]
         private SkinEditor skinEditor;
 
         public const float VISIBLE_TARGET_SCALE = 0.8f;
-
-        [Resolved]
-        private OsuColour colours { get; set; }
 
         public SkinEditorOverlay(ScalingContainer target)
         {
@@ -32,39 +31,76 @@ namespace osu.Game.Skinning.Editor
             RelativeSizeAxes = Axes.Both;
         }
 
-        public bool OnPressed(GlobalAction action)
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            switch (action)
+            switch (e.Action)
             {
                 case GlobalAction.Back:
-                    if (skinEditor?.State.Value == Visibility.Visible)
-                    {
-                        skinEditor.ToggleVisibility();
-                        return true;
-                    }
+                    if (skinEditor?.State.Value != Visibility.Visible)
+                        break;
 
-                    break;
+                    Hide();
+                    return true;
 
                 case GlobalAction.ToggleSkinEditor:
-                    if (skinEditor == null)
-                    {
-                        LoadComponentAsync(skinEditor = new SkinEditor(target), AddInternal);
-                        skinEditor.State.BindValueChanged(editorVisibilityChanged);
-                    }
-                    else
-                        skinEditor.ToggleVisibility();
-
+                    Toggle();
                     return true;
             }
 
             return false;
         }
 
+        public void Toggle()
+        {
+            if (skinEditor == null)
+                Show();
+            else
+                skinEditor.ToggleVisibility();
+        }
+
+        public override void Hide()
+        {
+            // base call intentionally omitted.
+            skinEditor?.Hide();
+        }
+
+        public override void Show()
+        {
+            // base call intentionally omitted as we have custom behaviour.
+
+            if (skinEditor != null)
+            {
+                skinEditor.Show();
+                return;
+            }
+
+            var editor = new SkinEditor(target);
+            editor.State.BindValueChanged(editorVisibilityChanged);
+
+            skinEditor = editor;
+
+            // Schedule ensures that if `Show` is called before this overlay is loaded,
+            // it will not throw (LoadComponentAsync requires the load target to be in a loaded state).
+            Schedule(() =>
+            {
+                if (editor != skinEditor)
+                    return;
+
+                LoadComponentAsync(editor, _ =>
+                {
+                    if (editor != skinEditor)
+                        return;
+
+                    AddInternal(editor);
+                });
+            });
+        }
+
         private void editorVisibilityChanged(ValueChangedEvent<Visibility> visibility)
         {
             if (visibility.NewValue == Visibility.Visible)
             {
-                target.Masking = true;
+                updateMasking();
                 target.AllowScaling = false;
                 target.RelativePositionAxes = Axes.Both;
 
@@ -75,12 +111,20 @@ namespace osu.Game.Skinning.Editor
             {
                 target.AllowScaling = true;
 
-                target.ScaleTo(1, SkinEditor.TRANSITION_DURATION, Easing.OutQuint).OnComplete(_ => target.Masking = false);
+                target.ScaleTo(1, SkinEditor.TRANSITION_DURATION, Easing.OutQuint).OnComplete(_ => updateMasking());
                 target.MoveToX(0f, SkinEditor.TRANSITION_DURATION, Easing.OutQuint);
             }
         }
 
-        public void OnReleased(GlobalAction action)
+        private void updateMasking()
+        {
+            if (skinEditor == null)
+                return;
+
+            target.Masking = skinEditor.State.Value == Visibility.Visible;
+        }
+
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
         }
 

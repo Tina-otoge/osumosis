@@ -33,7 +33,7 @@ namespace osu.Game.Rulesets.Catch.Tests
                 // this needs to be done within the frame stable context due to how quickly hyperdash state changes occur.
                 Player.DrawableRuleset.FrameStableComponents.OnUpdate += d =>
                 {
-                    var catcher = Player.ChildrenOfType<CatcherArea>().FirstOrDefault()?.MovableCatcher;
+                    var catcher = Player.ChildrenOfType<Catcher>().FirstOrDefault();
 
                     if (catcher == null)
                         return;
@@ -63,7 +63,7 @@ namespace osu.Game.Rulesets.Catch.Tests
                 BeatmapInfo =
                 {
                     Ruleset = ruleset,
-                    BaseDifficulty = new BeatmapDifficulty { CircleSize = 3.6f }
+                    Difficulty = new BeatmapDifficulty { CircleSize = 3.6f }
                 }
             };
 

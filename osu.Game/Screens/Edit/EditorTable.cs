@@ -2,10 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.LocalisationExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.Sprites;
@@ -41,11 +43,11 @@ namespace osu.Game.Screens.Edit
             });
         }
 
-        protected override Drawable CreateHeader(int index, TableColumn column) => new HeaderText(column?.Header ?? string.Empty);
+        protected override Drawable CreateHeader(int index, TableColumn column) => new HeaderText(column?.Header ?? default);
 
         private class HeaderText : OsuSpriteText
         {
-            public HeaderText(string text)
+            public HeaderText(LocalisableString text)
             {
                 Text = text.ToUpper();
                 Font = OsuFont.GetFont(size: 12, weight: FontWeight.Bold);
@@ -59,9 +61,6 @@ namespace osu.Game.Screens.Edit
             private const int fade_duration = 100;
 
             private readonly Box hoveredBackground;
-
-            [Resolved]
-            private EditorClock clock { get; set; }
 
             public RowBackground(object item)
             {

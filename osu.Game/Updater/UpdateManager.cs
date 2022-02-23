@@ -39,9 +39,9 @@ namespace osu.Game.Updater
 
             Schedule(() => Task.Run(CheckForUpdateAsync));
 
-            var version = game.Version;
+            string version = game.Version;
 
-            var lastVersion = config.Get<string>(OsuSetting.Version);
+            string lastVersion = config.Get<string>(OsuSetting.Version);
 
             if (game.IsDeployedBuild && version != lastVersion)
             {
@@ -90,14 +90,14 @@ namespace osu.Game.Updater
             public UpdateCompleteNotification(string version)
             {
                 this.version = version;
-                Text = $"You are now running osu!lazer {version}.\nClick to see what's new!";
+                Text = $"You are now running osu! {version}.\nClick to see what's new!";
             }
 
             [BackgroundDependencyLoader]
             private void load(OsuColour colours, ChangelogOverlay changelog, NotificationOverlay notificationOverlay)
             {
                 Icon = FontAwesome.Solid.CheckSquare;
-                IconBackgound.Colour = colours.BlueDark;
+                IconBackground.Colour = colours.BlueDark;
 
                 Activated = delegate
                 {

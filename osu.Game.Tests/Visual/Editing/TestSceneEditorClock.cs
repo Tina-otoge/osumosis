@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using NUnit.Framework;
-using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Rulesets.Osu;
@@ -37,9 +36,10 @@ namespace osu.Game.Tests.Visual.Editing
             });
         }
 
-        [BackgroundDependencyLoader]
-        private void load()
+        protected override void LoadComplete()
         {
+            base.LoadComplete();
+
             Beatmap.Value = CreateWorkingBeatmap(new OsuRuleset().RulesetInfo);
             // ensure that music controller does not change this beatmap due to it
             // completing naturally as part of the test.
@@ -76,6 +76,24 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddStep("start clock again", Clock.Start);
             AddAssert("clock looped to start", () => Clock.IsRunning && Clock.CurrentTime < 500);
+        }
+
+        [Test]
+        public void TestClampWhenSeekOutsideBeatmapBounds()
+        {
+            AddStep("stop clock", Clock.Stop);
+
+            AddStep("seek before start time", () => Clock.Seek(-1000));
+            AddAssert("time is clamped to 0", () => Clock.CurrentTime == 0);
+
+            AddStep("seek beyond track length", () => Clock.Seek(Clock.TrackLength + 1000));
+            AddAssert("time is clamped to track length", () => Clock.CurrentTime == Clock.TrackLength);
+
+            AddStep("seek smoothly before start time", () => Clock.SeekSmoothlyTo(-1000));
+            AddAssert("time is clamped to 0", () => Clock.CurrentTime == 0);
+
+            AddStep("seek smoothly beyond track length", () => Clock.SeekSmoothlyTo(Clock.TrackLength + 1000));
+            AddAssert("time is clamped to track length", () => Clock.CurrentTime == Clock.TrackLength);
         }
 
         protected override void Dispose(bool isDisposing)

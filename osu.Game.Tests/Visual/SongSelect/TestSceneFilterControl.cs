@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
@@ -35,10 +36,11 @@ namespace osu.Game.Tests.Visual.SongSelect
         [BackgroundDependencyLoader]
         private void load(GameHost host)
         {
-            Dependencies.Cache(rulesets = new RulesetStore(ContextFactory));
-            Dependencies.Cache(beatmapManager = new BeatmapManager(LocalStorage, ContextFactory, rulesets, null, Audio, Resources, host, Beatmap.Default));
+            Dependencies.Cache(rulesets = new RulesetStore(Realm));
+            Dependencies.Cache(beatmapManager = new BeatmapManager(LocalStorage, Realm, rulesets, null, Audio, Resources, host, Beatmap.Default));
+            Dependencies.Cache(Realm);
 
-            beatmapManager.Import(TestResources.GetQuickTestBeatmapForImport()).Wait();
+            beatmapManager.Import(TestResources.GetQuickTestBeatmapForImport()).WaitSafely();
 
             base.Content.AddRange(new Drawable[]
             {
@@ -205,7 +207,7 @@ namespace osu.Game.Tests.Visual.SongSelect
         private void assertCollectionDropdownContains(string collectionName, bool shouldContain = true) =>
             AddAssert($"collection dropdown {(shouldContain ? "contains" : "does not contain")} '{collectionName}'",
                 // A bit of a roundabout way of going about this, see: https://github.com/ppy/osu-framework/issues/3871 + https://github.com/ppy/osu-framework/issues/3872
-                () => shouldContain == (getCollectionDropdownItems().Any(i => i.ChildrenOfType<FillFlowContainer>().OfType<IHasText>().First().Text == collectionName)));
+                () => shouldContain == (getCollectionDropdownItems().Any(i => i.ChildrenOfType<CompositeDrawable>().OfType<IHasText>().First().Text == collectionName)));
 
         private IconButton getAddOrRemoveButton(int index)
             => getCollectionDropdownItems().ElementAt(index).ChildrenOfType<IconButton>().Single();

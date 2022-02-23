@@ -3,15 +3,20 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.OpenGL.Textures;
 using osu.Framework.Graphics.Textures;
+using osu.Framework.Logging;
 using osu.Game.Audio;
+using osu.Game.Database;
+using osu.Game.Extensions;
 using osu.Game.IO;
 using osu.Game.Screens.Play.HUD;
 
@@ -19,9 +24,10 @@ namespace osu.Game.Skinning
 {
     public abstract class Skin : IDisposable, ISkin
     {
-        public readonly SkinInfo SkinInfo;
+        public readonly Live<SkinInfo> SkinInfo;
+        private readonly IStorageResourceProvider resources;
 
-        public SkinConfiguration Configuration { get; protected set; }
+        public SkinConfiguration Configuration { get; set; }
 
         public IDictionary<SkinnableTarget, SkinnableInfo[]> DrawableComponentInfo => drawableComponentInfo;
 
@@ -35,34 +41,74 @@ namespace osu.Game.Skinning
 
         public abstract IBindable<TValue> GetConfig<TLookup, TValue>(TLookup lookup);
 
-        protected Skin(SkinInfo skin, IStorageResourceProvider resources)
+        protected Skin(SkinInfo skin, IStorageResourceProvider resources, [CanBeNull] Stream configurationStream = null)
         {
-            SkinInfo = skin;
+            SkinInfo = resources?.RealmAccess != null
+                ? skin.ToLive(resources.RealmAccess)
+                // This path should only be used in some tests.
+                : skin.ToLiveUnmanaged();
 
-            // we may want to move this to some kind of async operation in the future.
-            foreach (SkinnableTarget skinnableTarget in Enum.GetValues(typeof(SkinnableTarget)))
+            this.resources = resources;
+
+            configurationStream ??= getConfigurationStream();
+
+            if (configurationStream != null)
+                // stream will be closed after use by LineBufferedReader.
+                ParseConfigurationStream(configurationStream);
+            else
+                Configuration = new SkinConfiguration();
+
+            // skininfo files may be null for default skin.
+            SkinInfo.PerformRead(s =>
             {
-                string filename = $"{skinnableTarget}.json";
+                // we may want to move this to some kind of async operation in the future.
+                foreach (SkinnableTarget skinnableTarget in Enum.GetValues(typeof(SkinnableTarget)))
+                {
+                    string filename = $"{skinnableTarget}.json";
 
-                // skininfo files may be null for default skin.
-                var fileInfo = SkinInfo.Files?.FirstOrDefault(f => f.Filename == filename);
+                    // skininfo files may be null for default skin.
+                    var fileInfo = s.Files.FirstOrDefault(f => f.Filename == filename);
 
-                if (fileInfo == null)
-                    continue;
+                    if (fileInfo == null)
+                        continue;
 
-                var bytes = resources?.Files.Get(fileInfo.FileInfo.StoragePath);
+                    byte[] bytes = resources?.Files.Get(fileInfo.File.GetStoragePath());
 
-                if (bytes == null)
-                    continue;
+                    if (bytes == null)
+                        continue;
 
-                string jsonContent = Encoding.UTF8.GetString(bytes);
-                var deserializedContent = JsonConvert.DeserializeObject<IEnumerable<SkinnableInfo>>(jsonContent);
+                    try
+                    {
+                        string jsonContent = Encoding.UTF8.GetString(bytes);
+                        var deserializedContent = JsonConvert.DeserializeObject<IEnumerable<SkinnableInfo>>(jsonContent);
 
-                if (deserializedContent == null)
-                    continue;
+                        if (deserializedContent == null)
+                            continue;
 
-                DrawableComponentInfo[skinnableTarget] = deserializedContent.ToArray();
-            }
+                        DrawableComponentInfo[skinnableTarget] = deserializedContent.ToArray();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, "Failed to load skin configuration.");
+                    }
+                }
+            });
+        }
+
+        protected virtual void ParseConfigurationStream(Stream stream)
+        {
+            using (LineBufferedReader reader = new LineBufferedReader(stream, true))
+                Configuration = new LegacySkinDecoder().Decode(reader);
+        }
+
+        private Stream getConfigurationStream()
+        {
+            string path = SkinInfo.PerformRead(s => s.Files.SingleOrDefault(f => f.Filename.Equals(@"skin.ini", StringComparison.OrdinalIgnoreCase))?.File.GetStoragePath());
+
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            return resources?.Files.GetStream(path);
         }
 
         /// <summary>

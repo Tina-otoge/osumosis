@@ -14,15 +14,15 @@ namespace osu.Game.Rulesets.Catch.Tests
     {
         protected override string ResourceAssembly => "osu.Game.Rulesets.Catch";
 
-        [TestCase(4.050601681491468d, "diffcalc-test")]
+        [TestCase(4.0505463516206195d, "diffcalc-test")]
         public void Test(double expected, string name)
             => base.Test(expected, name);
 
-        [TestCase(5.169743871843191d, "diffcalc-test")]
+        [TestCase(5.1696411260785498d, "diffcalc-test")]
         public void TestClockRateAdjusted(double expected, string name)
             => Test(expected, name, new CatchModDoubleTime());
 
-        protected override DifficultyCalculator CreateDifficultyCalculator(WorkingBeatmap beatmap) => new CatchDifficultyCalculator(new CatchRuleset(), beatmap);
+        protected override DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap) => new CatchDifficultyCalculator(new CatchRuleset().RulesetInfo, beatmap);
 
         protected override Ruleset CreateRuleset() => new CatchRuleset();
     }

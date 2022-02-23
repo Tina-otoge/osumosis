@@ -6,7 +6,9 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using osu.Framework.Extensions;
 using osu.Framework.Platform;
+using osu.Framework.Testing;
 using osu.Game.Tests.Resources;
 
 namespace osu.Game.Tests.Collections.IO
@@ -127,8 +129,12 @@ namespace osu.Game.Tests.Collections.IO
         [Test]
         public async Task TestSaveAndReload()
         {
-            using (HeadlessGameHost host = new CleanRunHeadlessGameHost())
+            string firstRunName;
+
+            using (var host = new CleanRunHeadlessGameHost(bypassCleanup: true))
             {
+                firstRunName = host.Name;
+
                 try
                 {
                     var osu = LoadOsuIntoHost(host, true);
@@ -148,7 +154,8 @@ namespace osu.Game.Tests.Collections.IO
                 }
             }
 
-            using (HeadlessGameHost host = new HeadlessGameHost("TestSaveAndReload"))
+            // Name matches the automatically chosen name from `CleanRunHeadlessGameHost` above, so we end up using the same storage location.
+            using (HeadlessGameHost host = new TestRunHeadlessGameHost(firstRunName, null))
             {
                 try
                 {
@@ -173,7 +180,7 @@ namespace osu.Game.Tests.Collections.IO
         {
             // intentionally spin this up on a separate task to avoid disposal deadlocks.
             // see https://github.com/EventStore/EventStore/issues/1179
-            await Task.Run(() => osu.CollectionManager.Import(stream).Wait());
+            await Task.Factory.StartNew(() => osu.CollectionManager.Import(stream).WaitSafely(), TaskCreationOptions.LongRunning);
         }
     }
 }

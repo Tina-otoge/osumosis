@@ -25,9 +25,14 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
     public class PlayerArea : CompositeDrawable
     {
         /// <summary>
+        /// Raised after <see cref="Player.StartGameplay"/> is called on <see cref="Player"/>.
+        /// </summary>
+        public event Action OnGameplayStarted;
+
+        /// <summary>
         /// Whether a <see cref="Player"/> is loaded in the area.
         /// </summary>
-        public bool PlayerLoaded => stack?.CurrentScreen is Player;
+        public bool PlayerLoaded => (stack?.CurrentScreen as Player)?.IsLoaded == true;
 
         /// <summary>
         /// The user id this <see cref="PlayerArea"/> corresponds to.
@@ -84,13 +89,22 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
 
             Score = score;
 
-            gameplayContent.Child = new PlayerIsolationContainer(beatmapManager.GetWorkingBeatmap(Score.ScoreInfo.Beatmap), Score.ScoreInfo.Ruleset, Score.ScoreInfo.Mods)
+            gameplayContent.Child = new PlayerIsolationContainer(beatmapManager.GetWorkingBeatmap(Score.ScoreInfo.BeatmapInfo), Score.ScoreInfo.Ruleset, Score.ScoreInfo.Mods)
             {
                 RelativeSizeAxes = Axes.Both,
-                Child = stack = new OsuScreenStack()
+                Child = stack = new OsuScreenStack
+                {
+                    Name = nameof(PlayerArea),
+                }
             };
 
-            stack.Push(new MultiSpectatorPlayerLoader(Score, () => new MultiSpectatorPlayer(Score, GameplayClock)));
+            stack.Push(new MultiSpectatorPlayerLoader(Score, () =>
+            {
+                var player = new MultiSpectatorPlayer(Score, GameplayClock);
+                player.OnGameplayStarted += () => OnGameplayStarted?.Invoke();
+                return player;
+            }));
+
             loadingLayer.Hide();
         }
 

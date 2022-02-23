@@ -49,14 +49,14 @@ namespace osu.Game.Skinning
 
             public ITexturedCharacterGlyph Get(string fontName, char character)
             {
-                var lookup = getLookupName(character);
+                string lookup = getLookupName(character);
 
                 var texture = skin.GetTexture($"{fontName}-{lookup}");
 
                 if (texture == null)
                     return null;
 
-                return new TexturedCharacterGlyph(new CharacterGlyph(character, 0, 0, texture.Width, null), texture, 1f / texture.ScaleAdjust);
+                return new TexturedCharacterGlyph(new CharacterGlyph(character, 0, 0, texture.Width, texture.Height, null), texture, 1f / texture.ScaleAdjust);
             }
 
             private static string getLookupName(char character)

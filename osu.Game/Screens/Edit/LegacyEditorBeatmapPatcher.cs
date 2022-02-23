@@ -82,7 +82,7 @@ namespace osu.Game.Screens.Edit
             if (toAdd.Count > 0)
             {
                 IBeatmap newBeatmap = readBeatmap(newState);
-                foreach (var i in toAdd)
+                foreach (int i in toAdd)
                     editorBeatmap.Insert(i, newBeatmap.HitObjects[i]);
             }
 
@@ -118,7 +118,7 @@ namespace osu.Game.Screens.Edit
 
             protected override Track GetBeatmapTrack() => throw new NotImplementedException();
 
-            protected override ISkin GetSkin() => throw new NotImplementedException();
+            protected internal override ISkin GetSkin() => throw new NotImplementedException();
 
             public override Stream GetStream(string storagePath) => throw new NotImplementedException();
         }

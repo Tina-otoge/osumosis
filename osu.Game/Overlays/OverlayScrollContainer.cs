@@ -12,6 +12,7 @@ using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
+using osu.Game.Resources.Localisation.Web;
 using osuTK;
 using osuTK.Graphics;
 
@@ -36,11 +37,7 @@ namespace osu.Game.Overlays
                 Anchor = Anchor.BottomRight,
                 Origin = Anchor.BottomRight,
                 Margin = new MarginPadding(20),
-                Action = () =>
-                {
-                    ScrollToStart();
-                    Button.State = Visibility.Hidden;
-                }
+                Action = scrollToTop
             });
         }
 
@@ -55,6 +52,12 @@ namespace osu.Game.Overlays
             }
 
             Button.State = Target > button_scroll_position ? Visibility.Visible : Visibility.Hidden;
+        }
+
+        private void scrollToTop()
+        {
+            ScrollToStart();
+            Button.State = Visibility.Hidden;
         }
 
         public class ScrollToTopButton : OsuHoverContainer
@@ -118,7 +121,7 @@ namespace osu.Game.Overlays
                     }
                 });
 
-                TooltipText = "Scroll to top";
+                TooltipText = CommonStrings.ButtonsBackToTop;
             }
 
             [BackgroundDependencyLoader]

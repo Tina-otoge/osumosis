@@ -2,8 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Framework.Development;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
+using osu.Framework.Logging;
 using osu.Framework.Testing;
 using osu.Game.Overlays;
 using osu.Game.Screens;
@@ -28,10 +30,17 @@ namespace osu.Game.Tests.Visual
         {
             base.Content.AddRange(new Drawable[]
             {
-                Stack = new OsuScreenStack { RelativeSizeAxes = Axes.Both },
+                Stack = new OsuScreenStack
+                {
+                    Name = nameof(ScreenTestScene),
+                    RelativeSizeAxes = Axes.Both
+                },
                 content = new Container { RelativeSizeAxes = Axes.Both },
                 DialogOverlay = new DialogOverlay()
             });
+
+            Stack.ScreenPushed += (lastScreen, newScreen) => Logger.Log($"{nameof(ScreenTestScene)} screen changed → {newScreen}");
+            Stack.ScreenExited += (lastScreen, newScreen) => Logger.Log($"{nameof(ScreenTestScene)} screen changed ← {newScreen}");
         }
 
         protected void LoadScreen(OsuScreen screen) => Stack.Push(screen);
@@ -40,7 +49,11 @@ namespace osu.Game.Tests.Visual
         public virtual void SetUpSteps() => addExitAllScreensStep();
 
         [TearDownSteps]
-        public virtual void TearDownSteps() => addExitAllScreensStep();
+        public virtual void TearDownSteps()
+        {
+            if (DebugUtils.IsNUnitRunning)
+                addExitAllScreensStep();
+        }
 
         private void addExitAllScreensStep()
         {

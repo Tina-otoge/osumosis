@@ -8,7 +8,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Effects;
 using osu.Game.Graphics;
 using osu.Game.Online.API;
-using osu.Game.Users;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Users.Drawables;
 using osuTK;
 using osuTK.Graphics;
@@ -32,7 +32,7 @@ namespace osu.Game.Overlays.Toolbar
 
             Add(new OpaqueBackground { Depth = 1 });
 
-            Flow.Add(avatar = new UpdateableAvatar(openOnClick: false)
+            Flow.Add(avatar = new UpdateableAvatar(isInteractive: false)
             {
                 Masking = true,
                 Size = new Vector2(32),
@@ -63,7 +63,7 @@ namespace osu.Game.Overlays.Toolbar
             {
                 default:
                     Text = @"Guest";
-                    avatar.User = new User();
+                    avatar.User = new APIUser();
                     break;
 
                 case APIState.Online:

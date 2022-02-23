@@ -7,28 +7,25 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Input;
-using osu.Framework.Input.Bindings;
 using osu.Framework.Platform;
 using osu.Game.Beatmaps;
 using osu.Game.Extensions;
+using osu.Game.IO.Serialization;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Screens.Edit.Compose.Components.Timeline;
-using osu.Game.Skinning;
 
 namespace osu.Game.Screens.Edit.Compose
 {
-    public class ComposeScreen : EditorScreenWithTimeline, IKeyBindingHandler<PlatformAction>
+    public class ComposeScreen : EditorScreenWithTimeline
     {
-        [Resolved]
-        private IBindable<WorkingBeatmap> beatmap { get; set; }
-
         [Resolved]
         private GameHost host { get; set; }
 
         [Resolved]
         private EditorClock clock { get; set; }
+
+        private Bindable<string> clipboard { get; set; }
 
         private HitObjectComposer composer;
 
@@ -43,7 +40,7 @@ namespace osu.Game.Screens.Edit.Compose
         {
             var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
-            ruleset = parent.Get<IBindable<WorkingBeatmap>>().Value.BeatmapInfo.Ruleset?.CreateInstance();
+            ruleset = parent.Get<IBindable<WorkingBeatmap>>().Value.BeatmapInfo.Ruleset.CreateInstance();
             composer = ruleset?.CreateHitObjectComposer();
 
             // make the composer available to the timeline and other components in this screen.
@@ -73,21 +70,75 @@ namespace osu.Game.Screens.Edit.Compose
         {
             Debug.Assert(ruleset != null);
 
-            return new RulesetSkinProvidingContainer(ruleset, EditorBeatmap.PlayableBeatmap, beatmap.Value.Skin).WithChild(content);
+            return new EditorSkinProvidingContainer(EditorBeatmap).WithChild(content);
         }
 
-        #region Input Handling
-
-        public bool OnPressed(PlatformAction action)
+        [BackgroundDependencyLoader]
+        private void load(EditorClipboard clipboard)
         {
-            if (action.ActionType == PlatformActionType.Copy)
-                host.GetClipboard().SetText(formatSelectionAsString());
-
-            return false;
+            this.clipboard = clipboard.Content.GetBoundCopy();
         }
 
-        public void OnReleased(PlatformAction action)
+        protected override void LoadComplete()
         {
+            base.LoadComplete();
+
+            // May be null in the case of a ruleset that doesn't have editor support, see CreateMainContent().
+            if (composer == null)
+                return;
+
+            EditorBeatmap.SelectedHitObjects.BindCollectionChanged((_, __) => updateClipboardActionAvailability());
+            clipboard.BindValueChanged(_ => updateClipboardActionAvailability());
+            composer.OnLoadComplete += _ => updateClipboardActionAvailability();
+            updateClipboardActionAvailability();
+        }
+
+        #region Clipboard operations
+
+        protected override void PerformCut()
+        {
+            base.PerformCut();
+
+            Copy();
+            EditorBeatmap.RemoveRange(EditorBeatmap.SelectedHitObjects.ToArray());
+        }
+
+        protected override void PerformCopy()
+        {
+            base.PerformCopy();
+
+            clipboard.Value = new ClipboardContent(EditorBeatmap).Serialize();
+
+            host.GetClipboard()?.SetText(formatSelectionAsString());
+        }
+
+        protected override void PerformPaste()
+        {
+            base.PerformPaste();
+
+            var objects = clipboard.Value.Deserialize<ClipboardContent>().HitObjects;
+
+            Debug.Assert(objects.Any());
+
+            double timeOffset = clock.CurrentTime - objects.Min(o => o.StartTime);
+
+            foreach (var h in objects)
+                h.StartTime += timeOffset;
+
+            EditorBeatmap.BeginChange();
+
+            EditorBeatmap.SelectedHitObjects.Clear();
+
+            EditorBeatmap.AddRange(objects);
+            EditorBeatmap.SelectedHitObjects.AddRange(objects);
+
+            EditorBeatmap.EndChange();
+        }
+
+        private void updateClipboardActionAvailability()
+        {
+            CanCut.Value = CanCopy.Value = EditorBeatmap.SelectedHitObjects.Any();
+            CanPaste.Value = composer.IsLoaded && !string.IsNullOrEmpty(clipboard.Value);
         }
 
         private string formatSelectionAsString()

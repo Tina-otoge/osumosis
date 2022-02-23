@@ -6,8 +6,6 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
-using osu.Framework.Threading;
-using osu.Game.Extensions;
 using osu.Game.Input.Bindings;
 
 namespace osu.Game.Overlays.Volume
@@ -17,29 +15,24 @@ namespace osu.Game.Overlays.Volume
         public Func<GlobalAction, bool> ActionRequested;
         public Func<GlobalAction, float, bool, bool> ScrollActionRequested;
 
-        private ScheduledDelegate keyRepeat;
-
-        public bool OnPressed(GlobalAction action)
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            switch (action)
+            switch (e.Action)
             {
                 case GlobalAction.DecreaseVolume:
                 case GlobalAction.IncreaseVolume:
-                    keyRepeat?.Cancel();
-                    keyRepeat = this.BeginKeyRepeat(Scheduler, () => ActionRequested?.Invoke(action), 150);
-                    return true;
-
                 case GlobalAction.ToggleMute:
-                    ActionRequested?.Invoke(action);
+                case GlobalAction.NextVolumeMeter:
+                case GlobalAction.PreviousVolumeMeter:
+                    ActionRequested?.Invoke(e.Action);
                     return true;
             }
 
             return false;
         }
 
-        public void OnReleased(GlobalAction action)
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
-            keyRepeat?.Cancel();
         }
 
         protected override bool OnScroll(ScrollEvent e)
@@ -52,7 +45,7 @@ namespace osu.Game.Overlays.Volume
             return true;
         }
 
-        public bool OnScroll(GlobalAction action, float amount, bool isPrecise) =>
-            ScrollActionRequested?.Invoke(action, amount, isPrecise) ?? false;
+        public bool OnScroll(KeyBindingScrollEvent<GlobalAction> e) =>
+            ScrollActionRequested?.Invoke(e.Action, e.ScrollAmount, e.IsPrecise) ?? false;
     }
 }

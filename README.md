@@ -7,10 +7,12 @@ a server that entirely disregards combo to calculate scores.
 Codename "lazer" is the upcoming version of the free-to-play rhythm game "osu!".
 This project is modification of this client which adds a few features there and
 there.
+=======
 
 Read all about [osu! lazer on their own GitHub](https://github.com/ppy/osu).
 
 ## Notable changes between osumosis and osu! (lazer)
+=======
 
 :warning: osumosis does not change any behavior related to the official server,
 this means you'll still connect to your osu! account, see the official
@@ -73,7 +75,7 @@ project has never been approved by osu!.
 
 ### How to actually run it
 
-- You need the .NET 3.1 SDK, for Windows and macOS, go there:  
+- You need the .NET 6 SDK, for Windows and macOS, go there:  
   https://dotnet.microsoft.com/download/dotnet-core/3.1  
   And download the corresponding installer in the "Build apps - SDK" section
 
@@ -83,4 +85,4 @@ project has never been approved by osu!.
 - Run `dotnet run --project osu.Desktop -c Release` in it  
   Alternatively, run the `launch.bat` script that runs it for you
 
-TLDR: Download .NET SDK 3.1 and the code of osumosis, double click on `launch.bat`, enjoy.
+TLDR: Download .NET SDK 6 and the code of osumosis, double click on `launch.bat`, enjoy.

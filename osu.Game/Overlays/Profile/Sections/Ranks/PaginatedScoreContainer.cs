@@ -3,7 +3,6 @@
 
 using osu.Framework.Graphics.Containers;
 using osu.Game.Online.API.Requests;
-using osu.Game.Users;
 using System;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -11,14 +10,16 @@ using osu.Game.Online.API.Requests.Responses;
 using System.Collections.Generic;
 using osu.Game.Online.API;
 using osu.Framework.Allocation;
+using osu.Framework.Localisation;
+using APIUser = osu.Game.Online.API.Requests.Responses.APIUser;
 
 namespace osu.Game.Overlays.Profile.Sections.Ranks
 {
-    public class PaginatedScoreContainer : PaginatedProfileSubsection<APILegacyScoreInfo>
+    public class PaginatedScoreContainer : PaginatedProfileSubsection<APIScore>
     {
         private readonly ScoreType type;
 
-        public PaginatedScoreContainer(ScoreType type, Bindable<User> user, string headerText)
+        public PaginatedScoreContainer(ScoreType type, Bindable<APIUser> user, LocalisableString headerText)
             : base(user, headerText)
         {
             this.type = type;
@@ -32,7 +33,7 @@ namespace osu.Game.Overlays.Profile.Sections.Ranks
             ItemsContainer.Direction = FillDirection.Vertical;
         }
 
-        protected override int GetCount(User user)
+        protected override int GetCount(APIUser user)
         {
             switch (type)
             {
@@ -45,12 +46,15 @@ namespace osu.Game.Overlays.Profile.Sections.Ranks
                 case ScoreType.Recent:
                     return user.ScoresRecentCount;
 
+                case ScoreType.Pinned:
+                    return user.ScoresPinnedCount;
+
                 default:
                     return 0;
             }
         }
 
-        protected override void OnItemsReceived(List<APILegacyScoreInfo> items)
+        protected override void OnItemsReceived(List<APIScore> items)
         {
             if (VisiblePages == 0)
                 drawableItemIndex = 0;
@@ -58,20 +62,20 @@ namespace osu.Game.Overlays.Profile.Sections.Ranks
             base.OnItemsReceived(items);
         }
 
-        protected override APIRequest<List<APILegacyScoreInfo>> CreateRequest() =>
+        protected override APIRequest<List<APIScore>> CreateRequest() =>
             new GetUserScoresRequest(User.Value.Id, type, VisiblePages++, ItemsPerPage);
 
         private int drawableItemIndex;
 
-        protected override Drawable CreateDrawableItem(APILegacyScoreInfo model)
+        protected override Drawable CreateDrawableItem(APIScore model)
         {
             switch (type)
             {
                 default:
-                    return new DrawableProfileScore(model.CreateScoreInfo(Rulesets));
+                    return new DrawableProfileScore(model);
 
                 case ScoreType.Best:
-                    return new DrawableProfileWeightedScore(model.CreateScoreInfo(Rulesets), Math.Pow(0.95, drawableItemIndex++));
+                    return new DrawableProfileWeightedScore(model, Math.Pow(0.95, drawableItemIndex++));
             }
         }
     }

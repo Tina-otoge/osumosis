@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
+using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Testing;
@@ -137,6 +138,23 @@ namespace osu.Game.Tests.Visual.Gameplay
             AddAssert("no circle added", () => !this.ChildrenOfType<ColourHitErrorMeter.HitErrorCircle>().Any());
         }
 
+        [Test]
+        public void TestClear()
+        {
+            AddStep("OD 1", () => recreateDisplay(new OsuHitWindows(), 1));
+
+            AddStep("hit", () => newJudgement(0.2D));
+            AddAssert("bar added", () => this.ChildrenOfType<BarHitErrorMeter>().All(
+                meter => meter.ChildrenOfType<BarHitErrorMeter.JudgementLine>().Count() == 1));
+            AddAssert("circle added", () => this.ChildrenOfType<ColourHitErrorMeter>().All(
+                meter => meter.ChildrenOfType<ColourHitErrorMeter.HitErrorCircle>().Count() == 1));
+
+            AddStep("clear", () => this.ChildrenOfType<HitErrorMeter>().ForEach(meter => meter.Clear()));
+
+            AddAssert("bar cleared", () => !this.ChildrenOfType<BarHitErrorMeter.JudgementLine>().Any());
+            AddAssert("colour cleared", () => !this.ChildrenOfType<ColourHitErrorMeter.HitErrorCircle>().Any());
+        }
+
         private void recreateDisplay(HitWindows hitWindows, float overallDifficulty)
         {
             hitWindows?.SetDifficulty(overallDifficulty);
@@ -217,8 +235,17 @@ namespace osu.Game.Tests.Visual.Gameplay
 
             public override IEnumerable<HitObject> Objects => new[] { new HitCircle { HitWindows = HitWindows } };
 
-            public override event Action<JudgementResult> NewResult;
-            public override event Action<JudgementResult> RevertResult;
+            public override event Action<JudgementResult> NewResult
+            {
+                add => throw new InvalidOperationException();
+                remove => throw new InvalidOperationException();
+            }
+
+            public override event Action<JudgementResult> RevertResult
+            {
+                add => throw new InvalidOperationException();
+                remove => throw new InvalidOperationException();
+            }
 
             public override Playfield Playfield { get; }
             public override Container Overlays { get; }
@@ -233,9 +260,6 @@ namespace osu.Game.Tests.Visual.Gameplay
             public TestDrawableRuleset()
                 : base(new OsuRuleset())
             {
-                // won't compile without this.
-                NewResult?.Invoke(null);
-                RevertResult?.Invoke(null);
             }
 
             public override void SetReplayScore(Score replayScore) => throw new NotImplementedException();

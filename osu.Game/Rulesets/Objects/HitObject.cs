@@ -3,14 +3,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ListExtensions;
+using osu.Framework.Lists;
 using osu.Game.Audio;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.ControlPoints;
+using osu.Game.Beatmaps.Legacy;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Scoring;
@@ -65,8 +67,8 @@ namespace osu.Game.Rulesets.Objects
             }
         }
 
-        [JsonIgnore]
-        public SampleControlPoint SampleControlPoint;
+        public SampleControlPoint SampleControlPoint = SampleControlPoint.DEFAULT;
+        public DifficultyControlPoint DifficultyControlPoint = DifficultyControlPoint.DEFAULT;
 
         /// <summary>
         /// Whether this <see cref="HitObject"/> is in Kiai time.
@@ -83,18 +85,7 @@ namespace osu.Game.Rulesets.Objects
         private readonly List<HitObject> nestedHitObjects = new List<HitObject>();
 
         [JsonIgnore]
-        public IReadOnlyList<HitObject> NestedHitObjects => nestedHitObjects;
-
-        public HitObject()
-        {
-            StartTimeBindable.ValueChanged += time =>
-            {
-                double offset = time.NewValue - time.OldValue;
-
-                foreach (var nested in NestedHitObjects)
-                    nested.StartTime += offset;
-            };
-        }
+        public SlimReadOnlyListWrapper<HitObject> NestedHitObjects => nestedHitObjects.AsSlimReadOnly();
 
         /// <summary>
         /// Applies default values to this HitObject.
@@ -102,12 +93,26 @@ namespace osu.Game.Rulesets.Objects
         /// <param name="controlPointInfo">The control points.</param>
         /// <param name="difficulty">The difficulty settings to use.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        public void ApplyDefaults(ControlPointInfo controlPointInfo, BeatmapDifficulty difficulty, CancellationToken cancellationToken = default)
+        public void ApplyDefaults(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty, CancellationToken cancellationToken = default)
         {
+            var legacyInfo = controlPointInfo as LegacyControlPointInfo;
+
+            if (legacyInfo != null)
+                DifficultyControlPoint = (DifficultyControlPoint)legacyInfo.DifficultyPointAt(StartTime).DeepClone();
+            else if (DifficultyControlPoint == DifficultyControlPoint.DEFAULT)
+                DifficultyControlPoint = new DifficultyControlPoint();
+
+            DifficultyControlPoint.Time = StartTime;
+
             ApplyDefaultsToSelf(controlPointInfo, difficulty);
 
-            // This is done here since ApplyDefaultsToSelf may be used to determine the end time
-            SampleControlPoint = controlPointInfo.SamplePointAt(this.GetEndTime() + control_point_leniency);
+            // This is done here after ApplyDefaultsToSelf as we may require custom defaults to be applied to have an accurate end time.
+            if (legacyInfo != null)
+                SampleControlPoint = (SampleControlPoint)legacyInfo.SamplePointAt(this.GetEndTime() + control_point_leniency).DeepClone();
+            else if (SampleControlPoint == SampleControlPoint.DEFAULT)
+                SampleControlPoint = new SampleControlPoint();
+
+            SampleControlPoint.Time = this.GetEndTime() + control_point_leniency;
 
             nestedHitObjects.Clear();
 
@@ -115,10 +120,14 @@ namespace osu.Game.Rulesets.Objects
 
             if (this is IHasComboInformation hasCombo)
             {
-                foreach (var n in NestedHitObjects.OfType<IHasComboInformation>())
+                foreach (HitObject hitObject in nestedHitObjects)
                 {
-                    n.ComboIndexBindable.BindTo(hasCombo.ComboIndexBindable);
-                    n.IndexInCurrentComboBindable.BindTo(hasCombo.IndexInCurrentComboBindable);
+                    if (hitObject is IHasComboInformation n)
+                    {
+                        n.ComboIndexBindable.BindTo(hasCombo.ComboIndexBindable);
+                        n.ComboIndexWithOffsetsBindable.BindTo(hasCombo.ComboIndexWithOffsetsBindable);
+                        n.IndexInCurrentComboBindable.BindTo(hasCombo.IndexInCurrentComboBindable);
+                    }
                 }
             }
 
@@ -127,10 +136,31 @@ namespace osu.Game.Rulesets.Objects
             foreach (var h in nestedHitObjects)
                 h.ApplyDefaults(controlPointInfo, difficulty, cancellationToken);
 
+            // `ApplyDefaults()` may be called multiple times on a single hitobject.
+            // to prevent subscribing to `StartTimeBindable.ValueChanged` multiple times with the same callback,
+            // remove the previous subscription (if present) before (re-)registering.
+            StartTimeBindable.ValueChanged -= onStartTimeChanged;
+
+            // this callback must be (re-)registered after default application
+            // to ensure that the read of `this.GetEndTime()` within `onStartTimeChanged` doesn't return an invalid value
+            // if `StartTimeBindable` is changed prior to default application.
+            StartTimeBindable.ValueChanged += onStartTimeChanged;
+
             DefaultsApplied?.Invoke(this);
+
+            void onStartTimeChanged(ValueChangedEvent<double> time)
+            {
+                double offset = time.NewValue - time.OldValue;
+
+                foreach (var nested in nestedHitObjects)
+                    nested.StartTime += offset;
+
+                DifficultyControlPoint.Time = time.NewValue;
+                SampleControlPoint.Time = this.GetEndTime() + control_point_leniency;
+            }
         }
 
-        protected virtual void ApplyDefaultsToSelf(ControlPointInfo controlPointInfo, BeatmapDifficulty difficulty)
+        protected virtual void ApplyDefaultsToSelf(ControlPointInfo controlPointInfo, IBeatmapDifficultyInfo difficulty)
         {
             Kiai = controlPointInfo.EffectPointAt(StartTime + control_point_leniency).KiaiMode;
 

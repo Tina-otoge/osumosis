@@ -25,7 +25,7 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         /// <param name="score">The score containing the player's replay.</param>
         /// <param name="spectatorPlayerClock">The clock controlling the gameplay running state.</param>
         public MultiSpectatorPlayer([NotNull] Score score, [NotNull] ISpectatorPlayerClock spectatorPlayerClock)
-            : base(score)
+            : base(score, new PlayerConfiguration { AllowUserInteraction = false })
         {
             this.spectatorPlayerClock = spectatorPlayerClock;
         }
@@ -34,6 +34,9 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
         private void load()
         {
             spectatorPlayerClock.WaitingOnFrames.BindTo(waitingOnFrames);
+
+            HUDOverlay.PlayerSettingsOverlay.Expire();
+            HUDOverlay.HoldToQuit.Expire();
         }
 
         protected override void UpdateAfterChildren()
@@ -52,6 +55,8 @@ namespace osu.Game.Screens.OnlinePlay.Multiplayer.Spectate
             public SpectatorGameplayClockContainer([NotNull] IClock sourceClock)
                 : base(sourceClock)
             {
+                // the container should initially be in a stopped state until the catch-up clock is started by the sync manager.
+                Stop();
             }
 
             protected override void Update()

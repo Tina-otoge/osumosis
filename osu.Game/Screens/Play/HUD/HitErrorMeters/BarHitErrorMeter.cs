@@ -10,7 +10,6 @@ using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
-using osu.Game.Graphics;
 using osu.Game.Rulesets.Judgements;
 using osu.Game.Rulesets.Scoring;
 using osuTK;
@@ -33,6 +32,8 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
         private const float chevron_size = 8;
 
         private SpriteIcon arrow;
+        private SpriteIcon iconEarly;
+        private SpriteIcon iconLate;
 
         private Container colourBarsEarly;
         private Container colourBarsLate;
@@ -47,7 +48,7 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
         }
 
         [BackgroundDependencyLoader]
-        private void load(OsuColour colours)
+        private void load()
         {
             InternalChild = new FillFlowContainer
             {
@@ -97,25 +98,21 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
                                 RelativeSizeAxes = Axes.Both,
                                 Height = 0.5f,
                             },
-                            new SpriteIcon
+                            iconEarly = new SpriteIcon
                             {
                                 Y = -10,
                                 Size = new Vector2(10),
                                 Icon = FontAwesome.Solid.ShippingFast,
                                 Anchor = Anchor.TopCentre,
                                 Origin = Anchor.Centre,
-                                // undo any layout rotation to display the icon the correct orientation
-                                Rotation = -Rotation,
                             },
-                            new SpriteIcon
+                            iconLate = new SpriteIcon
                             {
                                 Y = 10,
                                 Size = new Vector2(10),
                                 Icon = FontAwesome.Solid.Bicycle,
                                 Anchor = Anchor.BottomCentre,
                                 Origin = Anchor.Centre,
-                                // undo any layout rotation to display the icon the correct orientation
-                                Rotation = -Rotation,
                             }
                         }
                     },
@@ -129,7 +126,7 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
                 }
             };
 
-            createColourBars(colours);
+            createColourBars();
         }
 
         protected override void LoadComplete()
@@ -143,18 +140,27 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
             arrow.Delay(200).FadeInFromZero(600);
         }
 
-        private void createColourBars(OsuColour colours)
+        protected override void Update()
+        {
+            base.Update();
+
+            // undo any layout rotation to display icons in the correct orientation
+            iconEarly.Rotation = -Rotation;
+            iconLate.Rotation = -Rotation;
+        }
+
+        private void createColourBars()
         {
             var windows = HitWindows.GetAllAvailableWindows().ToArray();
 
             // max to avoid div-by-zero.
             maxHitWindow = Math.Max(1, windows.First().length);
 
-            for (var i = 0; i < windows.Length; i++)
+            for (int i = 0; i < windows.Length; i++)
             {
-                var (result, length) = windows[i];
+                (var result, double length) = windows[i];
 
-                var hitWindow = (float)(length / maxHitWindow);
+                float hitWindow = (float)(length / maxHitWindow);
 
                 colourBarsEarly.Add(createColourBar(result, hitWindow, i == 0));
                 colourBarsLate.Add(createColourBar(result, hitWindow, i == 0));
@@ -279,5 +285,7 @@ namespace osu.Game.Screens.Play.HUD.HitErrorMeters
                 this.FadeTo(0.8f, 150).Then().FadeOut(judgement_fade_duration).Expire();
             }
         }
+
+        public override void Clear() => judgementsContainer.Clear();
     }
 }

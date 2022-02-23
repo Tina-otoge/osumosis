@@ -6,15 +6,17 @@ using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Cursor;
-using osu.Game.Users;
+using osu.Framework.Localisation;
+using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Resources.Localisation.Web;
 
 namespace osu.Game.Overlays.Profile.Header.Components
 {
     public class OverlinedTotalPlayTime : CompositeDrawable, IHasTooltip
     {
-        public readonly Bindable<User> User = new Bindable<User>();
+        public readonly Bindable<APIUser> User = new Bindable<APIUser>();
 
-        public string TooltipText { get; set; }
+        public LocalisableString TooltipText { get; set; }
 
         private OverlinedInfoContainer info;
 
@@ -30,14 +32,14 @@ namespace osu.Game.Overlays.Profile.Header.Components
         {
             InternalChild = info = new OverlinedInfoContainer
             {
-                Title = "Total Play Time",
+                Title = UsersStrings.ShowStatsPlayTime,
                 LineColour = colourProvider.Highlight1,
             };
 
             User.BindValueChanged(updateTime, true);
         }
 
-        private void updateTime(ValueChangedEvent<User> user)
+        private void updateTime(ValueChangedEvent<APIUser> user)
         {
             TooltipText = (user.NewValue?.Statistics?.PlayTime ?? 0) / 3600 + " hours";
             info.Content = formatTime(user.NewValue?.Statistics?.PlayTime);

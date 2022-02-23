@@ -49,7 +49,7 @@ namespace osu.Game.Tests.Visual.Online
         [Test]
         public void TestPlayActivity()
         {
-            AddStep("Set activity", () => api.Activity.Value = new UserActivity.SoloGame(new BeatmapInfo(), new RulesetInfo()));
+            AddStep("Set activity", () => api.Activity.Value = new UserActivity.InSoloGame(new BeatmapInfo(), new RulesetInfo()));
 
             AddStep("Run command", () => Add(new NowPlayingCommand()));
 
@@ -64,7 +64,7 @@ namespace osu.Game.Tests.Visual.Online
 
             AddStep("Set beatmap", () => Beatmap.Value = new DummyWorkingBeatmap(Audio, null)
             {
-                BeatmapInfo = { OnlineBeatmapID = hasOnlineId ? 1234 : (int?)null }
+                BeatmapInfo = { OnlineID = hasOnlineId ? 1234 : -1 }
             });
 
             AddStep("Run command", () => Add(new NowPlayingCommand()));

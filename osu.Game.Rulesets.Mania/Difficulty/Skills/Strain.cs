@@ -10,7 +10,7 @@ using osu.Game.Rulesets.Mods;
 
 namespace osu.Game.Rulesets.Mania.Difficulty.Skills
 {
-    public class Strain : StrainSkill
+    public class Strain : StrainDecaySkill
     {
         private const double individual_decay_base = 0.125;
         private const double overall_decay_base = 0.30;
@@ -35,8 +35,8 @@ namespace osu.Game.Rulesets.Mania.Difficulty.Skills
         protected override double StrainValueOf(DifficultyHitObject current)
         {
             var maniaCurrent = (ManiaDifficultyHitObject)current;
-            var endTime = maniaCurrent.EndTime;
-            var column = maniaCurrent.BaseObject.Column;
+            double endTime = maniaCurrent.EndTime;
+            int column = maniaCurrent.BaseObject.Column;
 
             double holdFactor = 1.0; // Factor to all additional strains in case something else is held
             double holdAddition = 0; // Addition to the current note in case it's a hold and has to be released awkwardly
@@ -71,7 +71,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.Skills
             return individualStrain + overallStrain - CurrentStrain;
         }
 
-        protected override double GetPeakStrain(double offset)
+        protected override double CalculateInitialStrain(double offset)
             => applyDecay(individualStrain, offset - Previous[0].StartTime, individual_decay_base)
                + applyDecay(overallStrain, offset - Previous[0].StartTime, overall_decay_base);
 

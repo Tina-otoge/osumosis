@@ -28,6 +28,14 @@ namespace osu.Game.Online.Multiplayer
         Task TransferHost(int userId);
 
         /// <summary>
+        /// As the host, kick another user from the room.
+        /// </summary>
+        /// <param name="userId">The user to kick..</param>
+        /// <exception cref="NotHostException">A user other than the current host is attempting to kick a user.</exception>
+        /// <exception cref="NotJoinedRoomException">If the user is not in a room.</exception>
+        Task KickUser(int userId);
+
+        /// <summary>
         /// As the host, update the settings of the currently joined room.
         /// </summary>
         /// <param name="settings">The new settings to apply.</param>
@@ -56,11 +64,40 @@ namespace osu.Game.Online.Multiplayer
         Task ChangeUserMods(IEnumerable<APIMod> newMods);
 
         /// <summary>
+        /// Send a match type specific request.
+        /// </summary>
+        /// <param name="request">The request to send.</param>
+        Task SendMatchRequest(MatchUserRequest request);
+
+        /// <summary>
         /// As the host of a room, start the match.
         /// </summary>
         /// <exception cref="NotHostException">A user other than the current host is attempting to start the game.</exception>
         /// <exception cref="NotJoinedRoomException">If the user is not in a room.</exception>
         /// <exception cref="InvalidStateException">If an attempt to start the game occurs when the game's (or users') state disallows it.</exception>
         Task StartMatch();
+
+        /// <summary>
+        /// Aborts an ongoing gameplay load.
+        /// </summary>
+        Task AbortGameplay();
+
+        /// <summary>
+        /// Adds an item to the playlist.
+        /// </summary>
+        /// <param name="item">The item to add.</param>
+        Task AddPlaylistItem(MultiplayerPlaylistItem item);
+
+        /// <summary>
+        /// Edits an existing playlist item with new values.
+        /// </summary>
+        /// <param name="item">The item to edit, containing new properties. Must have an ID.</param>
+        Task EditPlaylistItem(MultiplayerPlaylistItem item);
+
+        /// <summary>
+        /// Removes an item from the playlist.
+        /// </summary>
+        /// <param name="playlistItemId">The item to remove.</param>
+        Task RemovePlaylistItem(long playlistItemId);
     }
 }

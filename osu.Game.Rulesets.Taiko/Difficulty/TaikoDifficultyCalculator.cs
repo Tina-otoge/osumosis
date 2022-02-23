@@ -24,7 +24,7 @@ namespace osu.Game.Rulesets.Taiko.Difficulty
         private const double colour_skill_multiplier = 0.01;
         private const double stamina_skill_multiplier = 0.02;
 
-        public TaikoDifficultyCalculator(Ruleset ruleset, WorkingBeatmap beatmap)
+        public TaikoDifficultyCalculator(IRulesetInfo ruleset, IWorkingBeatmap beatmap)
             : base(ruleset, beatmap)
         {
         }
@@ -65,7 +65,7 @@ namespace osu.Game.Rulesets.Taiko.Difficulty
         protected override DifficultyAttributes CreateDifficultyAttributes(IBeatmap beatmap, Mod[] mods, Skill[] skills, double clockRate)
         {
             if (beatmap.HitObjects.Count == 0)
-                return new TaikoDifficultyAttributes { Mods = mods, Skills = skills };
+                return new TaikoDifficultyAttributes { Mods = mods };
 
             var colour = (Colour)skills[0];
             var rhythm = (Rhythm)skills[1];
@@ -85,19 +85,17 @@ namespace osu.Game.Rulesets.Taiko.Difficulty
             starRating = rescale(starRating);
 
             HitWindows hitWindows = new TaikoHitWindows();
-            hitWindows.SetDifficulty(beatmap.BeatmapInfo.BaseDifficulty.OverallDifficulty);
+            hitWindows.SetDifficulty(beatmap.Difficulty.OverallDifficulty);
 
             return new TaikoDifficultyAttributes
             {
                 StarRating = starRating,
                 Mods = mods,
-                StaminaStrain = staminaRating,
-                RhythmStrain = rhythmRating,
-                ColourStrain = colourRating,
-                // Todo: This int cast is temporary to achieve 1:1 results with osu!stable, and should be removed in the future
-                GreatHitWindow = (int)hitWindows.WindowFor(HitResult.Great) / clockRate,
+                StaminaDifficulty = staminaRating,
+                RhythmDifficulty = rhythmRating,
+                ColourDifficulty = colourRating,
+                GreatHitWindow = hitWindows.WindowFor(HitResult.Great) / clockRate,
                 MaxCombo = beatmap.HitObjects.Count(h => h is Hit),
-                Skills = skills
             };
         }
 

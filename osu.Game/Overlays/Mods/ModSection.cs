@@ -51,14 +51,14 @@ namespace osu.Game.Overlays.Mods
                     if (m == null)
                         return new ModButtonEmpty();
 
-                    return new ModButton(m)
+                    return CreateModButton(m).With(b =>
                     {
-                        SelectionChanged = mod =>
+                        b.SelectionChanged = mod =>
                         {
                             ModButtonStateChanged(mod);
                             Action?.Invoke(mod);
-                        },
-                    };
+                        };
+                    });
                 }).ToArray();
 
                 modsLoadCts?.Cancel();
@@ -96,7 +96,7 @@ namespace osu.Game.Overlays.Mods
 
             if (ToggleKeys != null)
             {
-                var index = Array.IndexOf(ToggleKeys, e.Key);
+                int index = Array.IndexOf(ToggleKeys, e.Key);
                 if (index > -1 && index < Buttons.Count)
                     Buttons[index].SelectNext(e.ShiftPressed ? -1 : 1);
             }
@@ -196,7 +196,7 @@ namespace osu.Game.Overlays.Mods
         {
             foreach (var mod in newSelectedMods)
             {
-                var index = Array.FindIndex(button.Mods, m1 => mod.GetType() == m1.GetType());
+                int index = Array.FindIndex(button.Mods, m1 => mod.GetType() == m1.GetType());
                 if (index < 0)
                     continue;
 
@@ -246,6 +246,8 @@ namespace osu.Game.Overlays.Mods
             Font = OsuFont.GetFont(weight: FontWeight.Bold),
             Text = text
         };
+
+        protected virtual ModButton CreateModButton(Mod mod) => new ModButton(mod);
 
         /// <summary>
         /// Play out all remaining animations immediately to leave mods in a good (final) state.

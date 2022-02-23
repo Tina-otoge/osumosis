@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Framework.Extensions;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -29,15 +28,15 @@ namespace osu.Game.Rulesets.Catch.Difficulty
         {
         }
 
-        public override double Calculate(Dictionary<string, double> categoryDifficulty = null)
+        public override PerformanceAttributes Calculate()
         {
             mods = Score.Mods;
 
-            fruitsHit = Score.Statistics.GetOrDefault(HitResult.Great);
-            ticksHit = Score.Statistics.GetOrDefault(HitResult.LargeTickHit);
-            tinyTicksHit = Score.Statistics.GetOrDefault(HitResult.SmallTickHit);
-            tinyTicksMissed = Score.Statistics.GetOrDefault(HitResult.SmallTickMiss);
-            misses = Score.Statistics.GetOrDefault(HitResult.Miss);
+            fruitsHit = Score.Statistics.GetValueOrDefault(HitResult.Great);
+            ticksHit = Score.Statistics.GetValueOrDefault(HitResult.LargeTickHit);
+            tinyTicksHit = Score.Statistics.GetValueOrDefault(HitResult.SmallTickHit);
+            tinyTicksMissed = Score.Statistics.GetValueOrDefault(HitResult.SmallTickMiss);
+            misses = Score.Statistics.GetValueOrDefault(HitResult.Miss);
 
             // We are heavily relying on aim in catch the beat
             double value = Math.Pow(5.0 * Math.Max(1.0, Attributes.StarRating / 0.0049) - 4.0, 2.0) / 100000.0;
@@ -45,15 +44,11 @@ namespace osu.Game.Rulesets.Catch.Difficulty
             // Longer maps are worth more. "Longer" means how many hits there are which can contribute to combo
             int numTotalHits = totalComboHits();
 
-            // Longer maps are worth more
             double lengthBonus =
                 0.95 + 0.3 * Math.Min(1.0, numTotalHits / 2500.0) +
                 (numTotalHits > 2500 ? Math.Log10(numTotalHits / 2500.0) * 0.475 : 0.0);
-
-            // Longer maps are worth more
             value *= lengthBonus;
 
-            // Penalize misses exponentially. This mainly fixes tag4 maps and the likes until a per-hitobject solution is available
             value *= Math.Pow(0.97, misses);
 
             // Combo scaling
@@ -81,17 +76,17 @@ namespace osu.Game.Rulesets.Catch.Difficulty
             }
 
             if (mods.Any(m => m is ModFlashlight))
-                // Apply length bonus again if flashlight is on simply because it becomes a lot harder on longer maps.
                 value *= 1.35 * lengthBonus;
 
-            // Scale the aim value with accuracy _slightly_
             value *= Math.Pow(accuracy(), 5.5);
 
-            // Custom multipliers for NoFail. SpunOut is not applicable.
             if (mods.Any(m => m is ModNoFail))
                 value *= 0.90;
 
-            return value;
+            return new CatchPerformanceAttributes
+            {
+                Total = value
+            };
         }
 
         private double accuracy() => totalHits() == 0 ? 0 : Math.Clamp((double)totalSuccessfulHits() / totalHits(), 0, 1);

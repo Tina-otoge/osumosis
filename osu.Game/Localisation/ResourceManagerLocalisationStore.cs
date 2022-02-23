@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Resources;
+using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Localisation;
 
@@ -27,7 +28,10 @@ namespace osu.Game.Localisation
 
         public string Get(string lookup)
         {
-            var split = lookup.Split(':');
+            string[] split = lookup.Split(':');
+
+            if (split.Length < 2)
+                return null;
 
             string ns = split[0];
             string key = split[1];
@@ -72,7 +76,7 @@ namespace osu.Game.Localisation
             }
         }
 
-        public Task<string> GetAsync(string lookup)
+        public Task<string> GetAsync(string lookup, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Get(lookup));
         }

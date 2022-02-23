@@ -14,8 +14,8 @@
         "jb"
       ]
     },
-    "smoogipoo.nvika": {
-      "version": "1.0.1",
+    "nvika": {
+      "version": "2.2.0",
       "commands": [
         "nvika"
       ]
@@ -27,7 +27,7 @@
       ]
     },
     "ppy.localisationanalyser.tools": {
-      "version": "2021.608.0",
+      "version": "2021.1210.0",
       "commands": [
         "localisation"
       ]

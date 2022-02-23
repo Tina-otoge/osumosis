@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -11,16 +12,18 @@ using osu.Framework.Graphics.Animations;
 using osu.Framework.Graphics.OpenGL.Textures;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
-using static osu.Game.Skinning.LegacySkinConfiguration;
+using static osu.Game.Skinning.SkinConfiguration;
 
 namespace osu.Game.Skinning
 {
     public static class LegacySkinExtensions
     {
+        [CanBeNull]
         public static Drawable GetAnimation(this ISkin source, string componentName, bool animatable, bool looping, bool applyConfigFrameRate = false, string animationSeparator = "-",
                                             bool startAtCurrentTime = true, double? frameLength = null)
             => source.GetAnimation(componentName, default, default, animatable, looping, applyConfigFrameRate, animationSeparator, startAtCurrentTime, frameLength);
 
+        [CanBeNull]
         public static Drawable GetAnimation(this ISkin source, string componentName, WrapMode wrapModeS, WrapMode wrapModeT, bool animatable, bool looping, bool applyConfigFrameRate = false,
                                             string animationSeparator = "-",
                                             bool startAtCurrentTime = true, double? frameLength = null)

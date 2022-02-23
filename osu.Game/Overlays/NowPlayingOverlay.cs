@@ -55,11 +55,6 @@ namespace osu.Game.Overlays
         protected override string PopInSampleName => "UI/now-playing-pop-in";
         protected override string PopOutSampleName => "UI/now-playing-pop-out";
 
-        /// <summary>
-        /// Provide a source for the toolbar height.
-        /// </summary>
-        public Func<float> GetToolbarHeight;
-
         [Resolved]
         private MusicController musicController { get; set; }
 
@@ -202,7 +197,6 @@ namespace osu.Game.Overlays
                 {
                     dragContainer.Add(playlist);
 
-                    playlist.BeatmapSets.BindTo(musicController.BeatmapSets);
                     playlist.State.BindValueChanged(s => playlistButton.FadeColour(s.NewValue == Visibility.Visible ? colours.Yellow : Color4.White, 200, Easing.OutQuint), true);
 
                     togglePlaylist();
@@ -219,7 +213,8 @@ namespace osu.Game.Overlays
         {
             base.LoadComplete();
 
-            beatmap.BindDisabledChanged(beatmapDisabledChanged, true);
+            beatmap.BindDisabledChanged(_ => Scheduler.AddOnce(beatmapDisabledChanged));
+            beatmapDisabledChanged();
 
             musicController.TrackChanged += trackChanged;
             trackChanged(beatmap.Value);
@@ -246,7 +241,6 @@ namespace osu.Game.Overlays
             base.UpdateAfterChildren();
 
             Height = dragContainer.Height;
-            dragContainer.Padding = new MarginPadding { Top = GetToolbarHeight?.Invoke() ?? 0 };
         }
 
         protected override void Update()
@@ -324,8 +318,10 @@ namespace osu.Game.Overlays
             };
         }
 
-        private void beatmapDisabledChanged(bool disabled)
+        private void beatmapDisabledChanged()
         {
+            bool disabled = beatmap.Disabled;
+
             if (disabled)
                 playlist?.Hide();
 
@@ -372,13 +368,12 @@ namespace osu.Game.Overlays
             private readonly WorkingBeatmap beatmap;
 
             public Background(WorkingBeatmap beatmap = null)
+                : base(cachedFrameBuffer: true)
             {
                 this.beatmap = beatmap;
 
                 Depth = float.MaxValue;
                 RelativeSizeAxes = Axes.Both;
-
-                CacheDrawnFrameBuffer = true;
 
                 Children = new Drawable[]
                 {

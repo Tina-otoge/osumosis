@@ -17,7 +17,7 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
     /// <summary>
     /// A <see cref="SliderBody"/> which changes its curve depending on the snaking progress.
     /// </summary>
-    public class SnakingSliderBody : SliderBody, ISliderProgress
+    public abstract class SnakingSliderBody : SliderBody, ISliderProgress
     {
         public readonly List<Vector2> CurrentCurve = new List<Vector2>();
 
@@ -70,8 +70,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
 
             Slider slider = drawableSlider.HitObject;
 
-            var span = slider.SpanAt(completionProgress);
-            var spanProgress = slider.ProgressAt(completionProgress);
+            int span = slider.SpanAt(completionProgress);
+            double spanProgress = slider.ProgressAt(completionProgress);
 
             double start = 0;
             double end = SnakingIn.Value ? Math.Clamp((Time.Current - (slider.StartTime - slider.TimePreempt)) / (slider.TimePreempt / 3), 0, 1) : 1;
@@ -110,8 +110,8 @@ namespace osu.Game.Rulesets.Osu.Skinning.Default
             snakedPosition = Path.PositionInBoundingBox(Vector2.Zero);
             snakedPathOffset = Path.PositionInBoundingBox(Path.Vertices[0]);
 
-            var lastSnakedStart = SnakedStart ?? 0;
-            var lastSnakedEnd = SnakedEnd ?? 0;
+            double lastSnakedStart = SnakedStart ?? 0;
+            double lastSnakedEnd = SnakedEnd ?? 0;
 
             SnakedStart = null;
             SnakedEnd = null;

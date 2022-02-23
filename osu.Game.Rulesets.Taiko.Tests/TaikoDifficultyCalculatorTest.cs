@@ -14,17 +14,17 @@ namespace osu.Game.Rulesets.Taiko.Tests
     {
         protected override string ResourceAssembly => "osu.Game.Rulesets.Taiko";
 
-        [TestCase(2.2867022617692685d, "diffcalc-test")]
-        [TestCase(2.2867022617692685d, "diffcalc-test-strong")]
+        [TestCase(2.2420075288523802d, "diffcalc-test")]
+        [TestCase(2.2420075288523802d, "diffcalc-test-strong")]
         public void Test(double expected, string name)
             => base.Test(expected, name);
 
-        [TestCase(3.1704781712282624d, "diffcalc-test")]
-        [TestCase(3.1704781712282624d, "diffcalc-test-strong")]
+        [TestCase(3.134084469440479d, "diffcalc-test")]
+        [TestCase(3.134084469440479d, "diffcalc-test-strong")]
         public void TestClockRateAdjusted(double expected, string name)
             => Test(expected, name, new TaikoModDoubleTime());
 
-        protected override DifficultyCalculator CreateDifficultyCalculator(WorkingBeatmap beatmap) => new TaikoDifficultyCalculator(new TaikoRuleset(), beatmap);
+        protected override DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap) => new TaikoDifficultyCalculator(new TaikoRuleset().RulesetInfo, beatmap);
 
         protected override Ruleset CreateRuleset() => new TaikoRuleset();
     }

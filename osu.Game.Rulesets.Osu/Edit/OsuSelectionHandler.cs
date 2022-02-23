@@ -1,15 +1,20 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+#nullable enable
+
 using System.Collections.Generic;
 using System.Linq;
+using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Utils;
 using osu.Game.Extensions;
+using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Screens.Edit.Compose.Components;
 using osuTK;
 
@@ -17,6 +22,9 @@ namespace osu.Game.Rulesets.Osu.Edit
 {
     public class OsuSelectionHandler : EditorSelectionHandler
     {
+        [Resolved(CanBeNull = true)]
+        private IPositionSnapProvider? positionSnapProvider { get; set; }
+
         /// <summary>
         /// During a transform, the initial origin is stored so it can be used throughout the operation.
         /// </summary>
@@ -26,7 +34,7 @@ namespace osu.Game.Rulesets.Osu.Edit
         /// During a transform, the initial path types of a single selected slider are stored so they
         /// can be maintained throughout the operation.
         /// </summary>
-        private List<PathType?> referencePathTypes;
+        private List<PathType?>? referencePathTypes;
 
         protected override void OnSelectionChanged()
         {
@@ -35,8 +43,8 @@ namespace osu.Game.Rulesets.Osu.Edit
             Quad quad = selectedMovableObjects.Length > 0 ? getSurroundingQuad(selectedMovableObjects) : new Quad();
 
             SelectionBox.CanRotate = quad.Width > 0 || quad.Height > 0;
-            SelectionBox.CanScaleX = quad.Width > 0;
-            SelectionBox.CanScaleY = quad.Height > 0;
+            SelectionBox.CanFlipX = SelectionBox.CanScaleX = quad.Width > 0;
+            SelectionBox.CanFlipY = SelectionBox.CanScaleY = quad.Height > 0;
             SelectionBox.CanReverse = EditorBeatmap.SelectedHitObjects.Count > 1 || EditorBeatmap.SelectedHitObjects.Any(s => s is Slider);
         }
 
@@ -76,61 +84,47 @@ namespace osu.Game.Rulesets.Osu.Edit
 
                 if (h is Slider slider)
                 {
-                    var points = slider.Path.ControlPoints.ToArray();
-                    Vector2 endPos = points.Last().Position.Value;
-
-                    slider.Path.ControlPoints.Clear();
-
-                    slider.Position += endPos;
-
-                    PathType? lastType = null;
-
-                    for (var i = 0; i < points.Length; i++)
-                    {
-                        var p = points[i];
-                        p.Position.Value -= endPos;
-
-                        // propagate types forwards to last null type
-                        if (i == points.Length - 1)
-                            p.Type.Value = lastType;
-                        else if (p.Type.Value != null)
-                        {
-                            var newType = p.Type.Value;
-                            p.Type.Value = lastType;
-                            lastType = newType;
-                        }
-
-                        slider.Path.ControlPoints.Insert(0, p);
-                    }
+                    slider.Path.Reverse(out Vector2 offset);
+                    slider.Position += offset;
                 }
             }
 
             return true;
         }
 
-        public override bool HandleFlip(Direction direction)
+        public override bool HandleFlip(Direction direction, bool flipOverOrigin)
         {
             var hitObjects = selectedMovableObjects;
 
-            var selectedObjectsQuad = getSurroundingQuad(hitObjects);
+            var flipQuad = flipOverOrigin ? new Quad(0, 0, OsuPlayfield.BASE_SIZE.X, OsuPlayfield.BASE_SIZE.Y) : getSurroundingQuad(hitObjects);
+
+            bool didFlip = false;
 
             foreach (var h in hitObjects)
             {
-                h.Position = GetFlippedPosition(direction, selectedObjectsQuad, h.Position);
+                var flippedPosition = GetFlippedPosition(direction, flipQuad, h.Position);
+
+                if (!Precision.AlmostEquals(flippedPosition, h.Position))
+                {
+                    h.Position = flippedPosition;
+                    didFlip = true;
+                }
 
                 if (h is Slider slider)
                 {
+                    didFlip = true;
+
                     foreach (var point in slider.Path.ControlPoints)
                     {
-                        point.Position.Value = new Vector2(
-                            (direction == Direction.Horizontal ? -1 : 1) * point.Position.Value.X,
-                            (direction == Direction.Vertical ? -1 : 1) * point.Position.Value.Y
+                        point.Position = new Vector2(
+                            (direction == Direction.Horizontal ? -1 : 1) * point.Position.X,
+                            (direction == Direction.Vertical ? -1 : 1) * point.Position.Y
                         );
                     }
                 }
             }
 
-            return true;
+            return didFlip;
         }
 
         public override bool HandleScale(Vector2 scale, Anchor reference)
@@ -177,7 +171,7 @@ namespace osu.Game.Rulesets.Osu.Edit
                 if (h is IHasPath path)
                 {
                     foreach (var point in path.Path.ControlPoints)
-                        point.Position.Value = RotatePointAroundOrigin(point.Position.Value, Vector2.Zero, delta);
+                        point.Position = RotatePointAroundOrigin(point.Position, Vector2.Zero, delta);
                 }
             }
 
@@ -187,9 +181,9 @@ namespace osu.Game.Rulesets.Osu.Edit
 
         private void scaleSlider(Slider slider, Vector2 scale)
         {
-            referencePathTypes ??= slider.Path.ControlPoints.Select(p => p.Type.Value).ToList();
+            referencePathTypes ??= slider.Path.ControlPoints.Select(p => p.Type).ToList();
 
-            Quad sliderQuad = GetSurroundingQuad(slider.Path.ControlPoints.Select(p => p.Position.Value));
+            Quad sliderQuad = GetSurroundingQuad(slider.Path.ControlPoints.Select(p => p.Position));
 
             // Limit minimum distance between control points after scaling to almost 0. Less than 0 causes the slider to flip, exactly 0 causes a crash through division by 0.
             scale = Vector2.ComponentMax(new Vector2(Precision.FLOAT_EPSILON), sliderQuad.Size + scale) - sliderQuad.Size;
@@ -202,13 +196,17 @@ namespace osu.Game.Rulesets.Osu.Edit
 
             foreach (var point in slider.Path.ControlPoints)
             {
-                oldControlPoints.Enqueue(point.Position.Value);
-                point.Position.Value *= pathRelativeDeltaScale;
+                oldControlPoints.Enqueue(point.Position);
+                point.Position *= pathRelativeDeltaScale;
             }
 
             // Maintain the path types in case they were defaulted to bezier at some point during scaling
             for (int i = 0; i < slider.Path.ControlPoints.Count; ++i)
-                slider.Path.ControlPoints[i].Type.Value = referencePathTypes[i];
+                slider.Path.ControlPoints[i].Type = referencePathTypes[i];
+
+            // Snap the slider's length to the current beat divisor
+            // to calculate the final resulting duration / bounding box before the final checks.
+            slider.SnapTo(positionSnapProvider);
 
             //if sliderhead or sliderend end up outside playfield, revert scaling.
             Quad scaledQuad = getSurroundingQuad(new OsuHitObject[] { slider });
@@ -218,7 +216,10 @@ namespace osu.Game.Rulesets.Osu.Edit
                 return;
 
             foreach (var point in slider.Path.ControlPoints)
-                point.Position.Value = oldControlPoints.Dequeue();
+                point.Position = oldControlPoints.Dequeue();
+
+            // Snap the slider's length again to undo the potentially-invalid length applied by the previous snap.
+            slider.SnapTo(positionSnapProvider);
         }
 
         private void scaleHitObjects(OsuHitObject[] hitObjects, Anchor reference, Vector2 scale)

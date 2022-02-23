@@ -16,7 +16,7 @@ namespace osu.Game.Rulesets.Osu.Mods
     {
         public override string Name => "Spun Out";
         public override string Acronym => "SO";
-        public override IconUsage? Icon => OsuIcon.ModSpunout;
+        public override IconUsage? Icon => OsuIcon.ModSpunOut;
         public override ModType Type => ModType.Automation;
         public override string Description => @"Spinners will be automatically completed.";
         public override double ScoreMultiplier => 0.9;
@@ -44,7 +44,7 @@ namespace osu.Game.Rulesets.Osu.Mods
             // because the spinner is under the gameplay clock, it is affected by rate adjustments on the track;
             // for that reason using ElapsedFrameTime directly leads to fewer SPM with Half Time and more SPM with Double Time.
             // for spinners we want the real (wall clock) elapsed time; to achieve that, unapply the clock rate locally here.
-            var rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / spinner.Clock.Rate;
+            double rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / spinner.Clock.Rate;
             spinner.RotationTracker.AddRotation(MathUtils.RadiansToDegrees((float)rateIndependentElapsedTime * 0.03f));
         }
     }

@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using osu.Framework.Input.Bindings;
+using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
 using osu.Game.Input.Bindings;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking;
 
@@ -36,17 +39,27 @@ namespace osu.Game.Screens.Play
             DrawableRuleset?.SetReplayScore(Score);
         }
 
-        protected override Score CreateScore() => createScore(GameplayBeatmap.PlayableBeatmap, Mods.Value);
+        protected override Score CreateScore(IBeatmap beatmap) => createScore(beatmap, Mods.Value);
 
         // Don't re-import replay scores as they're already present in the database.
         protected override Task ImportScore(Score score) => Task.CompletedTask;
 
         protected override ResultsScreen CreateResults(ScoreInfo score) => new SoloResultsScreen(score, false);
 
-        public bool OnPressed(GlobalAction action)
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            switch (action)
+            const double keyboard_seek_amount = 5000;
+
+            switch (e.Action)
             {
+                case GlobalAction.SeekReplayBackward:
+                    keyboardSeek(-1);
+                    return true;
+
+                case GlobalAction.SeekReplayForward:
+                    keyboardSeek(1);
+                    return true;
+
                 case GlobalAction.TogglePauseReplay:
                     if (GameplayClockContainer.IsPaused.Value)
                         GameplayClockContainer.Start();
@@ -56,9 +69,16 @@ namespace osu.Game.Screens.Play
             }
 
             return false;
+
+            void keyboardSeek(int direction)
+            {
+                double target = Math.Clamp(GameplayClockContainer.CurrentTime + direction * keyboard_seek_amount, 0, GameplayState.Beatmap.HitObjects.Last().GetEndTime());
+
+                Seek(target);
+            }
         }
 
-        public void OnReleased(GlobalAction action)
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
         }
     }

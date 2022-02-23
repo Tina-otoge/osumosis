@@ -75,7 +75,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                         Children = new[]
                         {
                             new ExposedSkinnableDrawable("default", _ => new DefaultBox()),
-                            new ExposedSkinnableDrawable("available", _ => new DefaultBox(), ConfineMode.ScaleToFit),
+                            new ExposedSkinnableDrawable("available", _ => new DefaultBox()),
                             new ExposedSkinnableDrawable("available", _ => new DefaultBox(), ConfineMode.NoScaling)
                         }
                     },
@@ -168,7 +168,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             public void Disable()
             {
                 allow = false;
-                OnSourceChanged();
+                TriggerSourceChanged();
             }
 
             public SwitchableSkinProvidingContainer(ISkin skin)
@@ -301,8 +301,6 @@ namespace osu.Game.Tests.Visual.Gameplay
             public ISample GetSample(ISampleInfo sampleInfo) => throw new NotImplementedException();
 
             public IBindable<TValue> GetConfig<TLookup, TValue>(TLookup lookup) => throw new NotImplementedException();
-
-            public ISkin FindProvider(Func<ISkin, bool> lookupFunction) => throw new NotImplementedException();
         }
 
         private class SecondarySource : ISkin
@@ -314,8 +312,6 @@ namespace osu.Game.Tests.Visual.Gameplay
             public ISample GetSample(ISampleInfo sampleInfo) => throw new NotImplementedException();
 
             public IBindable<TValue> GetConfig<TLookup, TValue>(TLookup lookup) => throw new NotImplementedException();
-
-            public ISkin FindProvider(Func<ISkin, bool> lookupFunction) => throw new NotImplementedException();
         }
 
         [Cached(typeof(ISkinSource))]

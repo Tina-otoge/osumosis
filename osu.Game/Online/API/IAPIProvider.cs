@@ -3,8 +3,10 @@
 
 #nullable enable
 
+using System;
 using System.Threading.Tasks;
 using osu.Framework.Bindables;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Users;
 
 namespace osu.Game.Online.API
@@ -15,13 +17,13 @@ namespace osu.Game.Online.API
         /// The local user.
         /// This is not thread-safe and should be scheduled locally if consumed from a drawable component.
         /// </summary>
-        IBindable<User> LocalUser { get; }
+        IBindable<APIUser> LocalUser { get; }
 
         /// <summary>
         /// The user's friends.
         /// This is not thread-safe and should be scheduled locally if consumed from a drawable component.
         /// </summary>
-        IBindableList<User> Friends { get; }
+        IBindableList<APIUser> Friends { get; }
 
         /// <summary>
         /// The current user's activity.
@@ -54,6 +56,11 @@ namespace osu.Game.Online.API
         /// The root URL of of the website, excluding the trailing slash.
         /// </summary>
         string WebsiteRootUrl { get; }
+
+        /// <summary>
+        /// The last login error that occurred, if any.
+        /// </summary>
+        Exception? LastLoginError { get; }
 
         /// <summary>
         /// The current connection state of the API.
@@ -102,7 +109,8 @@ namespace osu.Game.Online.API
         /// </summary>
         /// <param name="clientName">The name of the client this connector connects for, used for logging.</param>
         /// <param name="endpoint">The endpoint to the hub.</param>
-        IHubClientConnector? GetHubConnector(string clientName, string endpoint);
+        /// <param name="preferMessagePack">Whether to use MessagePack for serialisation if available on this platform.</param>
+        IHubClientConnector? GetHubConnector(string clientName, string endpoint, bool preferMessagePack = true);
 
         /// <summary>
         /// Create a new user account. This is a blocking operation.

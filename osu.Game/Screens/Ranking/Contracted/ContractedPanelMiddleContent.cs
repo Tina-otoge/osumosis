@@ -107,7 +107,7 @@ namespace osu.Game.Screens.Ranking.Contracted
                                         {
                                             Anchor = Anchor.TopCentre,
                                             Origin = Anchor.TopCentre,
-                                            Text = score.UserString,
+                                            Text = score.RealmUser.Username,
                                             Font = OsuFont.GetFont(size: 16, weight: FontWeight.SemiBold)
                                         },
                                         new FillFlowContainer
@@ -131,14 +131,14 @@ namespace osu.Game.Screens.Ranking.Contracted
                                                 createStatistic("Accuracy", $"{score.Accuracy.FormatAccuracy()}"),
                                             }
                                         },
-                                        new ModDisplay
+                                        new ModFlowDisplay
                                         {
                                             Anchor = Anchor.TopCentre,
                                             Origin = Anchor.TopCentre,
-                                            AutoSizeAxes = Axes.Both,
-                                            ExpansionMode = ExpansionMode.AlwaysExpanded,
+                                            AutoSizeAxes = Axes.Y,
+                                            RelativeSizeAxes = Axes.X,
                                             Current = { Value = score.Mods },
-                                            Scale = new Vector2(0.5f),
+                                            IconScale = 0.5f,
                                         }
                                     }
                                 }

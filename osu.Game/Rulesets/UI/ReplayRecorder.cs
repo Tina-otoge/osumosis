@@ -28,11 +28,11 @@ namespace osu.Game.Rulesets.UI
 
         public int RecordFrameRate = 60;
 
-        [Resolved(canBeNull: true)]
+        [Resolved]
         private SpectatorClient spectatorClient { get; set; }
 
         [Resolved]
-        private GameplayBeatmap gameplayBeatmap { get; set; }
+        private GameplayState gameplayState { get; set; }
 
         protected ReplayRecorder(Score target)
         {
@@ -48,14 +48,13 @@ namespace osu.Game.Rulesets.UI
             base.LoadComplete();
 
             inputManager = GetContainingInputManager();
-
-            spectatorClient?.BeginPlaying(gameplayBeatmap, target);
+            spectatorClient.BeginPlaying(gameplayState, target);
         }
 
         protected override void Dispose(bool isDisposing)
         {
             base.Dispose(isDisposing);
-            spectatorClient?.EndPlaying();
+            spectatorClient?.EndPlaying(gameplayState);
         }
 
         protected override void Update()
@@ -70,16 +69,16 @@ namespace osu.Game.Rulesets.UI
             return base.OnMouseMove(e);
         }
 
-        public bool OnPressed(T action)
+        public bool OnPressed(KeyBindingPressEvent<T> e)
         {
-            pressedActions.Add(action);
+            pressedActions.Add(e.Action);
             recordFrame(true);
             return false;
         }
 
-        public void OnReleased(T action)
+        public void OnReleased(KeyBindingReleaseEvent<T> e)
         {
-            pressedActions.Remove(action);
+            pressedActions.Remove(e.Action);
             recordFrame(true);
         }
 

@@ -5,7 +5,6 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Input.Events;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Screens.Edit;
 
 namespace osu.Game.Tests.Visual
@@ -23,7 +22,7 @@ namespace osu.Game.Tests.Visual
 
         protected EditorClockTestScene()
         {
-            Clock = new EditorClock(new ControlPointInfo(), BeatDivisor) { IsCoupled = false };
+            Clock = new EditorClock(new Beatmap(), BeatDivisor) { IsCoupled = false };
         }
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
@@ -36,15 +35,15 @@ namespace osu.Game.Tests.Visual
             return dependencies;
         }
 
-        [BackgroundDependencyLoader]
-        private void load()
+        protected override void LoadComplete()
         {
+            base.LoadComplete();
             Beatmap.BindValueChanged(beatmapChanged, true);
         }
 
         private void beatmapChanged(ValueChangedEvent<WorkingBeatmap> e)
         {
-            Clock.ControlPointInfo = e.NewValue.Beatmap.ControlPointInfo;
+            Clock.Beatmap = e.NewValue.Beatmap;
             Clock.ChangeSource(e.NewValue.Track);
             Clock.ProcessFrame();
         }

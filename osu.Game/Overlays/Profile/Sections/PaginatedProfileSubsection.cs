@@ -1,20 +1,21 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using osuTK;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Game.Online.API;
-using osu.Game.Users;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using osu.Game.Graphics.UserInterface;
-using osu.Game.Rulesets;
-using osu.Game.Graphics.Sprites;
+using osu.Framework.Localisation;
 using osu.Game.Graphics;
+using osu.Game.Graphics.Sprites;
+using osu.Game.Graphics.UserInterface;
+using osu.Game.Online.API;
+using osu.Game.Graphics.Containers;
+using osu.Game.Online.API.Requests.Responses;
+using osuTK;
 
 namespace osu.Game.Overlays.Profile.Sections
 {
@@ -23,22 +24,19 @@ namespace osu.Game.Overlays.Profile.Sections
         [Resolved]
         private IAPIProvider api { get; set; }
 
-        [Resolved]
-        protected RulesetStore Rulesets { get; private set; }
-
         protected int VisiblePages;
         protected int ItemsPerPage;
 
-        protected FillFlowContainer ItemsContainer { get; private set; }
+        protected ReverseChildIDFillFlowContainer<Drawable> ItemsContainer { get; private set; }
 
         private APIRequest<List<TModel>> retrievalRequest;
         private CancellationTokenSource loadCancellation;
 
         private ShowMoreButton moreButton;
         private OsuSpriteText missing;
-        private readonly string missingText;
+        private readonly LocalisableString? missingText;
 
-        protected PaginatedProfileSubsection(Bindable<User> user, string headerText = "", string missingText = "")
+        protected PaginatedProfileSubsection(Bindable<APIUser> user, LocalisableString? headerText = null, LocalisableString? missingText = null)
             : base(user, headerText, CounterVisibilityState.AlwaysVisible)
         {
             this.missingText = missingText;
@@ -51,11 +49,15 @@ namespace osu.Game.Overlays.Profile.Sections
             Direction = FillDirection.Vertical,
             Children = new Drawable[]
             {
-                ItemsContainer = new FillFlowContainer
+                // reverse ID flow is required for correct Z-ordering of the items (last item should be front-most).
+                // particularly important in PaginatedBeatmapContainer, as it uses beatmap cards, which have expandable overhanging content.
+                ItemsContainer = new ReverseChildIDFillFlowContainer<Drawable>
                 {
                     AutoSizeAxes = Axes.Y,
                     RelativeSizeAxes = Axes.X,
                     Spacing = new Vector2(0, 2),
+                    // ensure the container and its contents are in front of the "more" button.
+                    Depth = float.MinValue
                 },
                 moreButton = new ShowMoreButton
                 {
@@ -68,7 +70,7 @@ namespace osu.Game.Overlays.Profile.Sections
                 missing = new OsuSpriteText
                 {
                     Font = OsuFont.GetFont(size: 15),
-                    Text = missingText,
+                    Text = missingText ?? string.Empty,
                     Alpha = 0,
                 }
             }
@@ -80,7 +82,7 @@ namespace osu.Game.Overlays.Profile.Sections
             User.BindValueChanged(onUserChanged, true);
         }
 
-        private void onUserChanged(ValueChangedEvent<User> e)
+        private void onUserChanged(ValueChangedEvent<APIUser> e)
         {
             loadCancellation?.Cancel();
             retrievalRequest?.Cancel();
@@ -114,7 +116,7 @@ namespace osu.Game.Overlays.Profile.Sections
                 moreButton.Hide();
                 moreButton.IsLoading = false;
 
-                if (!string.IsNullOrEmpty(missingText))
+                if (missingText.HasValue)
                     missing.Show();
 
                 return;
@@ -130,7 +132,7 @@ namespace osu.Game.Overlays.Profile.Sections
             }, loadCancellation.Token);
         });
 
-        protected virtual int GetCount(User user) => 0;
+        protected virtual int GetCount(APIUser user) => 0;
 
         protected virtual void OnItemsReceived(List<TModel> items)
         {

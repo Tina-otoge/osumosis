@@ -4,9 +4,11 @@
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Framework.Graphics.Textures;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Graphics.Containers;
+using osu.Game.Graphics.UserInterface;
+using osu.Game.Online.API.Requests.Responses;
 
 namespace osu.Game.Users.Drawables
 {
@@ -31,7 +33,7 @@ namespace osu.Game.Users.Drawables
             set => clickableArea.TooltipText = value ? (user?.Username ?? string.Empty) : default_tooltip_text;
         }
 
-        private readonly User user;
+        private readonly APIUser user;
 
         [Resolved(CanBeNull = true)]
         private OsuGame game { get; set; }
@@ -43,7 +45,7 @@ namespace osu.Game.Users.Drawables
         /// If <see cref="OpenOnClick"/> is <c>true</c>, clicking will open the user's profile.
         /// </summary>
         /// <param name="user">The user. A null value will get a placeholder avatar.</param>
-        public ClickableAvatar(User user = null)
+        public ClickableAvatar(APIUser user = null)
         {
             this.user = user;
 
@@ -55,7 +57,7 @@ namespace osu.Game.Users.Drawables
         }
 
         [BackgroundDependencyLoader]
-        private void load(LargeTextureStore textures)
+        private void load()
         {
             LoadComponentAsync(new DrawableAvatar(user), clickableArea.Add);
         }
@@ -63,16 +65,21 @@ namespace osu.Game.Users.Drawables
         private void openProfile()
         {
             if (user?.Id > 1)
-                game?.ShowUser(user.Id);
+                game?.ShowUser(user);
         }
 
         private class ClickableArea : OsuClickableContainer
         {
-            private string tooltip = default_tooltip_text;
+            private LocalisableString tooltip = default_tooltip_text;
 
-            public override string TooltipText
+            public ClickableArea()
+                : base(HoverSampleSet.Submit)
             {
-                get => Enabled.Value ? tooltip : null;
+            }
+
+            public override LocalisableString TooltipText
+            {
+                get => Enabled.Value ? tooltip : default;
                 set => tooltip = value;
             }
 

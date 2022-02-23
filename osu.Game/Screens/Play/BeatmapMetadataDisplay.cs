@@ -10,12 +10,12 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
+using osu.Game.Beatmaps.Drawables;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Screens.Play.HUD;
-using osu.Game.Screens.Ranking.Expanded;
 using osuTK;
 
 namespace osu.Game.Screens.Play
@@ -25,7 +25,7 @@ namespace osu.Game.Screens.Play
     /// </summary>
     public class BeatmapMetadataDisplay : Container
     {
-        private readonly WorkingBeatmap beatmap;
+        private readonly IWorkingBeatmap beatmap;
         private readonly Bindable<IReadOnlyList<Mod>> mods;
         private readonly Drawable logoFacade;
         private LoadingSpinner loading;
@@ -43,7 +43,7 @@ namespace osu.Game.Screens.Play
             }
         }
 
-        public BeatmapMetadataDisplay(WorkingBeatmap beatmap, Bindable<IReadOnlyList<Mod>> mods, Drawable logoFacade)
+        public BeatmapMetadataDisplay(IWorkingBeatmap beatmap, Bindable<IReadOnlyList<Mod>> mods, Drawable logoFacade)
         {
             this.beatmap = beatmap;
             this.logoFacade = logoFacade;
@@ -126,7 +126,7 @@ namespace osu.Game.Screens.Play
                             {
                                 new OsuSpriteText
                                 {
-                                    Text = beatmap?.BeatmapInfo?.Version,
+                                    Text = beatmap?.BeatmapInfo?.DifficultyName,
                                     Font = OsuFont.GetFont(size: 26, italics: true),
                                     Anchor = Anchor.TopCentre,
                                     Origin = Anchor.TopCentre,
@@ -164,7 +164,7 @@ namespace osu.Game.Screens.Play
                                 new Drawable[]
                                 {
                                     new MetadataLineLabel("Mapper"),
-                                    new MetadataLineInfo(metadata.AuthorString)
+                                    new MetadataLineInfo(metadata.Author.Username)
                                 }
                             }
                         },
@@ -172,7 +172,6 @@ namespace osu.Game.Screens.Play
                         {
                             Anchor = Anchor.TopCentre,
                             Origin = Anchor.TopCentre,
-                            AutoSizeAxes = Axes.Both,
                             Margin = new MarginPadding { Top = 20 },
                             Current = mods
                         },

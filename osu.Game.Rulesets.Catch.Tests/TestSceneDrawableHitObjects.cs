@@ -30,17 +30,17 @@ namespace osu.Game.Rulesets.Catch.Tests
             var controlPointInfo = new ControlPointInfo();
             controlPointInfo.Add(0, new TimingControlPoint());
 
-            WorkingBeatmap beatmap = CreateWorkingBeatmap(new Beatmap
+            IWorkingBeatmap beatmap = CreateWorkingBeatmap(new Beatmap
             {
                 HitObjects = new List<HitObject> { new Fruit() },
                 BeatmapInfo = new BeatmapInfo
                 {
-                    BaseDifficulty = new BeatmapDifficulty(),
+                    Difficulty = new BeatmapDifficulty(),
                     Metadata = new BeatmapMetadata
                     {
                         Artist = @"Unknown",
                         Title = @"You're breathtaking",
-                        AuthorString = @"Everyone",
+                        Author = { Username = @"Everyone" },
                     },
                     Ruleset = new CatchRuleset().RulesetInfo
                 },
@@ -72,7 +72,7 @@ namespace osu.Game.Rulesets.Catch.Tests
         }
 
         [Test]
-        public void TestJuicestream()
+        public void TestJuiceStream()
         {
             AddStep("hit juicestream", () => spawnJuiceStream(true));
             AddUntilStep("wait for completion", () => playfieldIsEmpty);
@@ -97,7 +97,7 @@ namespace osu.Game.Rulesets.Catch.Tests
 
         private bool playfieldIsEmpty => !((CatchPlayfield)drawableRuleset.Playfield).AllHitObjects.Any(h => h.IsAlive);
 
-        private CatcherAnimationState catcherState => ((CatchPlayfield)drawableRuleset.Playfield).CatcherArea.MovableCatcher.CurrentState;
+        private CatcherAnimationState catcherState => ((CatchPlayfield)drawableRuleset.Playfield).Catcher.CurrentState;
 
         private void spawnFruits(bool hit = false)
         {
@@ -118,7 +118,7 @@ namespace osu.Game.Rulesets.Catch.Tests
 
         private void spawnJuiceStream(bool hit = false)
         {
-            var xCoords = getXCoords(hit);
+            float xCoords = getXCoords(hit);
 
             var juice = new JuiceStream
             {
@@ -162,7 +162,7 @@ namespace osu.Game.Rulesets.Catch.Tests
             float xCoords = CatchPlayfield.CENTER_X;
 
             if (drawableRuleset.Playfield is CatchPlayfield catchPlayfield)
-                catchPlayfield.CatcherArea.MovableCatcher.X = xCoords - x_offset;
+                catchPlayfield.Catcher.X = xCoords - x_offset;
 
             if (hit)
                 xCoords -= x_offset;

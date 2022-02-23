@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Diagnostics;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -37,9 +36,7 @@ namespace osu.Game.Screens.Select
 
         public FilterCriteria CreateCriteria()
         {
-            Debug.Assert(ruleset.Value.ID != null);
-
-            var query = searchTextBox.Text;
+            string query = searchTextBox.Text;
 
             var criteria = new FilterCriteria
             {

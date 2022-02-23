@@ -264,7 +264,7 @@ namespace osu.Game.Rulesets.Mania.Tests
                 },
                 BeatmapInfo =
                 {
-                    BaseDifficulty = new BeatmapDifficulty
+                    Difficulty = new BeatmapDifficulty
                     {
                         SliderTickRate = 4,
                         OverallDifficulty = 10,
@@ -306,7 +306,7 @@ namespace osu.Game.Rulesets.Mania.Tests
                 },
                 BeatmapInfo =
                 {
-                    BaseDifficulty = new BeatmapDifficulty { SliderTickRate = tick_rate },
+                    Difficulty = new BeatmapDifficulty { SliderTickRate = tick_rate },
                     Ruleset = new ManiaRuleset().RulesetInfo
                 },
             };
@@ -383,12 +383,12 @@ namespace osu.Game.Rulesets.Mania.Tests
                     },
                     BeatmapInfo =
                     {
-                        BaseDifficulty = new BeatmapDifficulty { SliderTickRate = 4 },
+                        Difficulty = new BeatmapDifficulty { SliderTickRate = 4 },
                         Ruleset = new ManiaRuleset().RulesetInfo
                     },
                 };
 
-                beatmap.ControlPointInfo.Add(0, new DifficultyControlPoint { SpeedMultiplier = 0.1f });
+                beatmap.ControlPointInfo.Add(0, new EffectControlPoint { ScrollSpeed = 0.1f });
             }
 
             AddStep("load player", () =>

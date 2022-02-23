@@ -11,6 +11,7 @@ using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Graphics.Textures;
+using osu.Framework.Input;
 using osu.Framework.Input.Bindings;
 using osu.Framework.Input.Events;
 using osu.Game.Database;
@@ -38,6 +39,9 @@ namespace osu.Game.Overlays.Toolbar
 
         [Resolved]
         private TextureStore textures { get; set; }
+
+        [Resolved]
+        private ReadableKeyCombinationProvider keyCombinationProvider { get; set; }
 
         public void SetIcon(string texture) =>
             SetIcon(new Sprite
@@ -76,7 +80,7 @@ namespace osu.Game.Overlays.Toolbar
         protected FillFlowContainer Flow;
 
         [Resolved]
-        private RealmContextFactory realmFactory { get; set; }
+        private RealmAccess realm { get; set; }
 
         protected ToolbarButton()
             : base(HoverSampleSet.Toolbar)
@@ -159,28 +163,6 @@ namespace osu.Game.Overlays.Toolbar
             };
         }
 
-        private RealmKeyBinding realmKeyBinding;
-
-        protected override void LoadComplete()
-        {
-            base.LoadComplete();
-
-            if (Hotkey == null) return;
-
-            realmKeyBinding = realmFactory.Context.All<RealmKeyBinding>().FirstOrDefault(rkb => rkb.RulesetID == null && rkb.ActionInt == (int)Hotkey.Value);
-
-            if (realmKeyBinding != null)
-            {
-                realmKeyBinding.PropertyChanged += (sender, args) =>
-                {
-                    if (args.PropertyName == nameof(realmKeyBinding.KeyCombinationString))
-                        updateKeyBindingTooltip();
-                };
-            }
-
-            updateKeyBindingTooltip();
-        }
-
         protected override bool OnMouseDown(MouseDownEvent e) => true;
 
         protected override bool OnClick(ClickEvent e)
@@ -196,6 +178,7 @@ namespace osu.Game.Overlays.Toolbar
 
             HoverBackground.FadeIn(200);
             tooltipContainer.FadeIn(100);
+
             return base.OnHover(e);
         }
 
@@ -205,26 +188,30 @@ namespace osu.Game.Overlays.Toolbar
             tooltipContainer.FadeOut(100);
         }
 
-        public bool OnPressed(GlobalAction action)
+        public bool OnPressed(KeyBindingPressEvent<GlobalAction> e)
         {
-            if (action == Hotkey)
+            if (e.Action == Hotkey)
             {
-                Click();
+                TriggerClick();
                 return true;
             }
 
             return false;
         }
 
-        public void OnReleased(GlobalAction action)
+        public void OnReleased(KeyBindingReleaseEvent<GlobalAction> e)
         {
         }
 
         private void updateKeyBindingTooltip()
         {
+            if (Hotkey == null) return;
+
+            var realmKeyBinding = realm.Realm.All<RealmKeyBinding>().FirstOrDefault(rkb => rkb.RulesetName == null && rkb.ActionInt == (int)Hotkey.Value);
+
             if (realmKeyBinding != null)
             {
-                var keyBindingString = realmKeyBinding.KeyCombination.ReadableString();
+                string keyBindingString = keyCombinationProvider.GetReadableString(realmKeyBinding.KeyCombination);
 
                 if (!string.IsNullOrEmpty(keyBindingString))
                     keyBindingTooltip.Text = $" ({keyBindingString})";

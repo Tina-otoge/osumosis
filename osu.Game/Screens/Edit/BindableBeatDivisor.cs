@@ -41,6 +41,8 @@ namespace osu.Game.Screens.Edit
         protected override int DefaultMaxValue => VALID_DIVISORS.Last();
         protected override int DefaultPrecision => 1;
 
+        protected override Bindable<int> CreateInstance() => new BindableBeatDivisor();
+
         /// <summary>
         /// Retrieves the appropriate colour for a beat divisor.
         /// </summary>
@@ -90,7 +92,7 @@ namespace osu.Game.Screens.Edit
         {
             int beat = index % beatDivisor;
 
-            foreach (var divisor in BindableBeatDivisor.VALID_DIVISORS)
+            foreach (int divisor in BindableBeatDivisor.VALID_DIVISORS)
             {
                 if ((beat * divisor) % beatDivisor == 0)
                     return divisor;

@@ -12,6 +12,7 @@ using osu.Framework.Testing;
 using osu.Framework.Timing;
 using osu.Framework.Utils;
 using osu.Game.Beatmaps;
+using osu.Game.Database;
 using osu.Game.Extensions;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Osu;
@@ -41,7 +42,8 @@ namespace osu.Game.Tests.Visual.Gameplay
         [Test]
         public void TestEmptyLegacyBeatmapSkinFallsBack()
         {
-            CreateSkinTest(SkinInfo.Default, () => new LegacyBeatmapSkin(new BeatmapInfo(), null, null));
+            CreateSkinTest(DefaultSkin.CreateInfo(), () => new LegacyBeatmapSkin(new BeatmapInfo(), null, null));
+            AddUntilStep("wait for hud load", () => Player.ChildrenOfType<SkinnableTargetContainer>().All(c => c.ComponentsLoaded));
             AddAssert("hud from default skin", () => AssertComponentsFromExpectedSource(SkinnableTarget.MainHUDComponents, skinManager.CurrentSkin.Value));
         }
 
@@ -51,7 +53,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             {
                 AddStep("setup skins", () =>
                 {
-                    skinManager.CurrentSkinInfo.Value = gameCurrentSkin;
+                    skinManager.CurrentSkinInfo.Value = gameCurrentSkin.ToLiveUnmanaged();
                     currentBeatmapSkin = getBeatmapSkin();
                 });
             });
@@ -84,17 +86,17 @@ namespace osu.Game.Tests.Visual.Gameplay
             Remove(expectedComponentsAdjustmentContainer);
 
             return almostEqual(actualInfo, expectedInfo);
-
-            static bool almostEqual(SkinnableInfo info, SkinnableInfo other) =>
-                other != null
-                && info.Type == other.Type
-                && info.Anchor == other.Anchor
-                && info.Origin == other.Origin
-                && Precision.AlmostEquals(info.Position, other.Position)
-                && Precision.AlmostEquals(info.Scale, other.Scale)
-                && Precision.AlmostEquals(info.Rotation, other.Rotation)
-                && info.Children.SequenceEqual(other.Children, new FuncEqualityComparer<SkinnableInfo>(almostEqual));
         }
+
+        private static bool almostEqual(SkinnableInfo info, SkinnableInfo other) =>
+            other != null
+            && info.Type == other.Type
+            && info.Anchor == other.Anchor
+            && info.Origin == other.Origin
+            && Precision.AlmostEquals(info.Position, other.Position, 1)
+            && Precision.AlmostEquals(info.Scale, other.Scale)
+            && Precision.AlmostEquals(info.Rotation, other.Rotation)
+            && info.Children.SequenceEqual(other.Children, new FuncEqualityComparer<SkinnableInfo>(almostEqual));
 
         protected override WorkingBeatmap CreateWorkingBeatmap(IBeatmap beatmap, Storyboard storyboard = null)
             => new CustomSkinWorkingBeatmap(beatmap, storyboard, Clock, Audio, currentBeatmapSkin);
@@ -111,7 +113,7 @@ namespace osu.Game.Tests.Visual.Gameplay
                 this.beatmapSkin = beatmapSkin;
             }
 
-            protected override ISkin GetSkin() => beatmapSkin;
+            protected internal override ISkin GetSkin() => beatmapSkin;
         }
 
         private class TestOsuRuleset : OsuRuleset

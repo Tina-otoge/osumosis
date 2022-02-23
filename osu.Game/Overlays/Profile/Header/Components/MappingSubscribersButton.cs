@@ -4,15 +4,17 @@
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics.Sprites;
-using osu.Game.Users;
+using osu.Framework.Localisation;
+using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Resources.Localisation.Web;
 
 namespace osu.Game.Overlays.Profile.Header.Components
 {
     public class MappingSubscribersButton : ProfileHeaderStatisticsButton
     {
-        public readonly Bindable<User> User = new Bindable<User>();
+        public readonly Bindable<APIUser> User = new Bindable<APIUser>();
 
-        public override string TooltipText => "mapping subscribers";
+        public override LocalisableString TooltipText => FollowsStrings.MappingFollowers;
 
         protected override IconUsage Icon => FontAwesome.Solid.Bell;
 
