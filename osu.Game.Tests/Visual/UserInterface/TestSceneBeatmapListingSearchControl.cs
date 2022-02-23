@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Linq;
+using Humanizer;
 using NUnit.Framework;
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
@@ -9,6 +10,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Graphics.Sprites;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays;
 using osu.Game.Overlays.BeatmapListing;
 using osuTK;
@@ -34,6 +36,7 @@ namespace osu.Game.Tests.Visual.UserInterface
         public void SetUp() => Schedule(() =>
         {
             OsuSpriteText query;
+            OsuSpriteText general;
             OsuSpriteText ruleset;
             OsuSpriteText category;
             OsuSpriteText genre;
@@ -58,6 +61,7 @@ namespace osu.Game.Tests.Visual.UserInterface
                     Children = new Drawable[]
                     {
                         query = new OsuSpriteText(),
+                        general = new OsuSpriteText(),
                         ruleset = new OsuSpriteText(),
                         category = new OsuSpriteText(),
                         genre = new OsuSpriteText(),
@@ -71,6 +75,7 @@ namespace osu.Game.Tests.Visual.UserInterface
             };
 
             control.Query.BindValueChanged(q => query.Text = $"Query: {q.NewValue}", true);
+            control.General.BindCollectionChanged((u, v) => general.Text = $"General: {(control.General.Any() ? string.Join('.', control.General.Select(i => i.ToString().Underscore())) : "")}", true);
             control.Ruleset.BindValueChanged(r => ruleset.Text = $"Ruleset: {r.NewValue}", true);
             control.Category.BindValueChanged(c => category.Text = $"Category: {c.NewValue}", true);
             control.Genre.BindValueChanged(g => genre.Text = $"Genre: {g.NewValue}", true);
@@ -92,10 +97,10 @@ namespace osu.Game.Tests.Visual.UserInterface
         [Test]
         public void TestExplicitConfig()
         {
-            AddStep("configure explicit content to allowed", () => localConfig.Set(OsuSetting.ShowOnlineExplicitContent, true));
+            AddStep("configure explicit content to allowed", () => localConfig.SetValue(OsuSetting.ShowOnlineExplicitContent, true));
             AddAssert("explicit control set to show", () => control.ExplicitContent.Value == SearchExplicit.Show);
 
-            AddStep("configure explicit content to disallowed", () => localConfig.Set(OsuSetting.ShowOnlineExplicitContent, false));
+            AddStep("configure explicit content to disallowed", () => localConfig.SetValue(OsuSetting.ShowOnlineExplicitContent, false));
             AddAssert("explicit control set to hide", () => control.ExplicitContent.Value == SearchExplicit.Hide);
         }
 
@@ -105,25 +110,19 @@ namespace osu.Game.Tests.Visual.UserInterface
             base.Dispose(isDisposing);
         }
 
-        private static readonly BeatmapSetInfo beatmap_set = new BeatmapSetInfo
+        private static readonly APIBeatmapSet beatmap_set = new APIBeatmapSet
         {
-            OnlineInfo = new BeatmapSetOnlineInfo
+            Covers = new BeatmapSetOnlineCovers
             {
-                Covers = new BeatmapSetOnlineCovers
-                {
-                    Cover = "https://assets.ppy.sh/beatmaps/1094296/covers/cover@2x.jpg?1581416305"
-                }
+                Cover = "https://assets.ppy.sh/beatmaps/1094296/covers/cover@2x.jpg?1581416305"
             }
         };
 
-        private static readonly BeatmapSetInfo no_cover_beatmap_set = new BeatmapSetInfo
+        private static readonly APIBeatmapSet no_cover_beatmap_set = new APIBeatmapSet
         {
-            OnlineInfo = new BeatmapSetOnlineInfo
+            Covers = new BeatmapSetOnlineCovers
             {
-                Covers = new BeatmapSetOnlineCovers
-                {
-                    Cover = string.Empty
-                }
+                Cover = string.Empty
             }
         };
     }

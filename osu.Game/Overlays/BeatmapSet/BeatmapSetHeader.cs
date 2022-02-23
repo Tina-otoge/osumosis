@@ -6,7 +6,8 @@ using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Effects;
-using osu.Game.Beatmaps;
+using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Resources.Localisation.Web;
 using osu.Game.Rulesets;
 using osuTK;
 using osuTK.Graphics;
@@ -15,7 +16,7 @@ namespace osu.Game.Overlays.BeatmapSet
 {
     public class BeatmapSetHeader : OverlayHeader
     {
-        public readonly Bindable<BeatmapSetInfo> BeatmapSet = new Bindable<BeatmapSetInfo>();
+        public readonly Bindable<APIBeatmapSet> BeatmapSet = new Bindable<APIBeatmapSet>();
 
         public BeatmapSetHeaderContent HeaderContent { get; private set; }
 
@@ -54,7 +55,7 @@ namespace osu.Game.Overlays.BeatmapSet
         {
             public BeatmapHeaderTitle()
             {
-                Title = "beatmap info";
+                Title = PageTitleStrings.MainBeatmapsetsControllerShow;
                 IconTexture = "Icons/Hexacons/beatmap";
             }
         }

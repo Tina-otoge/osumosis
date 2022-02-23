@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Utils;
@@ -13,26 +12,22 @@ using osu.Game.Rulesets.Osu.Objects.Drawables;
 
 namespace osu.Game.Rulesets.Osu.Mods
 {
-    public class OsuModSpunOut : Mod, IApplicableToDrawableHitObjects
+    public class OsuModSpunOut : Mod, IApplicableToDrawableHitObject
     {
         public override string Name => "Spun Out";
         public override string Acronym => "SO";
-        public override IconUsage? Icon => OsuIcon.ModSpunout;
+        public override IconUsage? Icon => OsuIcon.ModSpunOut;
         public override ModType Type => ModType.Automation;
         public override string Description => @"Spinners will be automatically completed.";
         public override double ScoreMultiplier => 0.9;
-        public override bool Ranked => true;
         public override Type[] IncompatibleMods => new[] { typeof(ModAutoplay), typeof(OsuModAutopilot) };
 
-        public void ApplyToDrawableHitObjects(IEnumerable<DrawableHitObject> drawables)
+        public void ApplyToDrawableHitObject(DrawableHitObject hitObject)
         {
-            foreach (var hitObject in drawables)
+            if (hitObject is DrawableSpinner spinner)
             {
-                if (hitObject is DrawableSpinner spinner)
-                {
-                    spinner.HandleUserInput = false;
-                    spinner.OnUpdate += onSpinnerUpdate;
-                }
+                spinner.HandleUserInput = false;
+                spinner.OnUpdate += onSpinnerUpdate;
             }
         }
 
@@ -49,7 +44,7 @@ namespace osu.Game.Rulesets.Osu.Mods
             // because the spinner is under the gameplay clock, it is affected by rate adjustments on the track;
             // for that reason using ElapsedFrameTime directly leads to fewer SPM with Half Time and more SPM with Double Time.
             // for spinners we want the real (wall clock) elapsed time; to achieve that, unapply the clock rate locally here.
-            var rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / spinner.Clock.Rate;
+            double rateIndependentElapsedTime = spinner.Clock.ElapsedFrameTime / spinner.Clock.Rate;
             spinner.RotationTracker.AddRotation(MathUtils.RadiansToDegrees((float)rateIndependentElapsedTime * 0.03f));
         }
     }

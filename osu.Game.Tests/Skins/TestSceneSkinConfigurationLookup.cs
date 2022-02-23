@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -132,11 +133,12 @@ namespace osu.Game.Tests.Skins
         [Test]
         public void TestEmptyComboColoursNoFallback()
         {
-            AddStep("Add custom combo colours to user skin", () => userSource.Configuration.AddComboColours(
+            AddStep("Add custom combo colours to user skin", () => userSource.Configuration.CustomComboColours = new List<Color4>
+            {
                 new Color4(100, 150, 200, 255),
                 new Color4(55, 110, 166, 255),
                 new Color4(75, 125, 175, 255)
-            ));
+            });
 
             AddStep("Disallow default colours fallback in beatmap skin", () => beatmapSource.Configuration.AllowDefaultComboColoursFallback = false);
 
@@ -149,7 +151,7 @@ namespace osu.Game.Tests.Skins
         {
             AddStep("Set user skin version 2.3", () => userSource.Configuration.LegacyVersion = 2.3m);
             AddStep("Set beatmap skin version null", () => beatmapSource.Configuration.LegacyVersion = null);
-            AddAssert("Check legacy version lookup", () => requester.GetConfig<LegacySkinConfiguration.LegacySetting, decimal>(LegacySkinConfiguration.LegacySetting.Version)?.Value == 2.3m);
+            AddAssert("Check legacy version lookup", () => requester.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value == 2.3m);
         }
 
         [Test]
@@ -158,7 +160,7 @@ namespace osu.Game.Tests.Skins
             // completely ignoring beatmap versions for simplicity.
             AddStep("Set user skin version 2.3", () => userSource.Configuration.LegacyVersion = 2.3m);
             AddStep("Set beatmap skin version null", () => beatmapSource.Configuration.LegacyVersion = 1.7m);
-            AddAssert("Check legacy version lookup", () => requester.GetConfig<LegacySkinConfiguration.LegacySetting, decimal>(LegacySkinConfiguration.LegacySetting.Version)?.Value == 2.3m);
+            AddAssert("Check legacy version lookup", () => requester.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value == 2.3m);
         }
 
         [Test]
@@ -167,14 +169,14 @@ namespace osu.Game.Tests.Skins
             AddStep("Set user skin version 2.3", () => userSource.Configuration.LegacyVersion = null);
             AddStep("Set beatmap skin version null", () => beatmapSource.Configuration.LegacyVersion = null);
             AddAssert("Check legacy version lookup",
-                () => requester.GetConfig<LegacySkinConfiguration.LegacySetting, decimal>(LegacySkinConfiguration.LegacySetting.Version)?.Value == LegacySkinConfiguration.LATEST_VERSION);
+                () => requester.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value == SkinConfiguration.LATEST_VERSION);
         }
 
         [Test]
         public void TestIniWithNoVersionFallsBackTo1()
         {
             AddStep("Parse skin with no version", () => userSource.Configuration = new LegacySkinDecoder().Decode(new LineBufferedReader(new MemoryStream())));
-            AddAssert("Check legacy version lookup", () => requester.GetConfig<LegacySkinConfiguration.LegacySetting, decimal>(LegacySkinConfiguration.LegacySetting.Version)?.Value == 1.0m);
+            AddAssert("Check legacy version lookup", () => requester.GetConfig<SkinConfiguration.LegacySetting, decimal>(SkinConfiguration.LegacySetting.Version)?.Value == 1.0m);
         }
 
         public enum LookupType
@@ -219,9 +221,11 @@ namespace osu.Game.Tests.Skins
 
             public Texture GetTexture(string componentName, WrapMode wrapModeS, WrapMode wrapModeT) => skin.GetTexture(componentName, wrapModeS, wrapModeT);
 
-            public Sample GetSample(ISampleInfo sampleInfo) => skin.GetSample(sampleInfo);
+            public ISample GetSample(ISampleInfo sampleInfo) => skin.GetSample(sampleInfo);
 
             public IBindable<TValue> GetConfig<TLookup, TValue>(TLookup lookup) => skin.GetConfig<TLookup, TValue>(lookup);
+
+            public ISkin FindProvider(Func<ISkin, bool> lookupFunction) => skin.FindProvider(lookupFunction);
         }
     }
 }

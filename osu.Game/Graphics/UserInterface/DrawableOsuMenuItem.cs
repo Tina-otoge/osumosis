@@ -2,8 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
-using osu.Framework.Audio;
-using osu.Framework.Audio.Sample;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -23,9 +21,6 @@ namespace osu.Game.Graphics.UserInterface
         private const int text_size = 17;
         private const int transition_length = 80;
 
-        private Sample sampleClick;
-        private Sample sampleHover;
-
         private TextContainer text;
 
         public DrawableOsuMenuItem(MenuItem item)
@@ -34,13 +29,12 @@ namespace osu.Game.Graphics.UserInterface
         }
 
         [BackgroundDependencyLoader]
-        private void load(AudioManager audio)
+        private void load()
         {
-            sampleHover = audio.Samples.Get(@"UI/generic-hover");
-            sampleClick = audio.Samples.Get(@"UI/generic-select");
-
             BackgroundColour = Color4.Transparent;
             BackgroundColourHover = Color4Extensions.FromHex(@"172023");
+
+            AddInternal(new HoverClickSounds());
 
             updateTextColour();
 
@@ -84,7 +78,6 @@ namespace osu.Game.Graphics.UserInterface
 
             if (IsHovered && !Item.Action.Disabled)
             {
-                sampleHover.Play();
                 text.BoldText.FadeIn(transition_length, Easing.OutQuint);
                 text.NormalText.FadeOut(transition_length, Easing.OutQuint);
             }
@@ -93,12 +86,6 @@ namespace osu.Game.Graphics.UserInterface
                 text.BoldText.FadeOut(transition_length, Easing.OutQuint);
                 text.NormalText.FadeIn(transition_length, Easing.OutQuint);
             }
-        }
-
-        protected override bool OnClick(ClickEvent e)
-        {
-            sampleClick.Play();
-            return base.OnClick(e);
         }
 
         protected sealed override Drawable CreateContent() => text = CreateTextContainer();
@@ -130,6 +117,7 @@ namespace osu.Game.Graphics.UserInterface
                 {
                     NormalText = new OsuSpriteText
                     {
+                        AlwaysPresent = true, // ensures that the menu item does not change width when switching between normal and bold text.
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,
                         Font = OsuFont.GetFont(size: text_size),
@@ -137,7 +125,7 @@ namespace osu.Game.Graphics.UserInterface
                     },
                     BoldText = new OsuSpriteText
                     {
-                        AlwaysPresent = true,
+                        AlwaysPresent = true, // ensures that the menu item does not change width when switching between normal and bold text.
                         Alpha = 0,
                         Anchor = Anchor.CentreLeft,
                         Origin = Anchor.CentreLeft,

@@ -5,12 +5,14 @@ using System.Linq;
 using System.Threading;
 using osuTK;
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Platform;
-using osu.Game.IO;
+using osu.Game.Database;
 using osu.Game.Screens.Play;
+using osu.Game.Stores;
 
 namespace osu.Game.Storyboards.Drawables
 {
@@ -18,6 +20,13 @@ namespace osu.Game.Storyboards.Drawables
     {
         [Cached]
         public Storyboard Storyboard { get; }
+
+        /// <summary>
+        /// Whether the storyboard is considered finished.
+        /// </summary>
+        public IBindable<bool> HasStoryboardEnded => hasStoryboardEnded;
+
+        private readonly BindableBool hasStoryboardEnded = new BindableBool(true);
 
         protected override Container<DrawableStoryboardLayer> Content { get; }
 
@@ -39,6 +48,8 @@ namespace osu.Game.Storyboards.Drawables
 
         public override bool RemoveCompletedTransforms => false;
 
+        private double? lastEventEndTime;
+
         private DependencyContainer dependencies;
 
         protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent) =>
@@ -47,7 +58,13 @@ namespace osu.Game.Storyboards.Drawables
         public DrawableStoryboard(Storyboard storyboard)
         {
             Storyboard = storyboard;
+
             Size = new Vector2(640, 480);
+
+            bool onlyHasVideoElements = Storyboard.Layers.SelectMany(l => l.Elements).Any(e => !(e is StoryboardVideo));
+
+            Width = Height * (storyboard.BeatmapInfo.WidescreenStoryboard || onlyHasVideoElements ? 16 / 9f : 4 / 3f);
+
             Anchor = Anchor.Centre;
             Origin = Anchor.Centre;
 
@@ -60,12 +77,12 @@ namespace osu.Game.Storyboards.Drawables
         }
 
         [BackgroundDependencyLoader(true)]
-        private void load(FileStore fileStore, GameplayClock clock, CancellationToken? cancellationToken, GameHost host)
+        private void load(GameplayClock clock, CancellationToken? cancellationToken, GameHost host, RealmAccess realm)
         {
             if (clock != null)
                 Clock = clock;
 
-            dependencies.Cache(new TextureStore(host.CreateTextureLoaderStore(fileStore.Store), false, scaleAdjust: 1));
+            dependencies.Cache(new TextureStore(host.CreateTextureLoaderStore(new RealmFileStore(realm, host.Storage).Store), false, scaleAdjust: 1));
 
             foreach (var layer in Storyboard.Layers)
             {
@@ -73,6 +90,14 @@ namespace osu.Game.Storyboards.Drawables
 
                 Add(layer.CreateDrawable());
             }
+
+            lastEventEndTime = Storyboard.LatestEventTime;
+        }
+
+        protected override void Update()
+        {
+            base.Update();
+            hasStoryboardEnded.Value = lastEventEndTime == null || Time.Current >= lastEventEndTime;
         }
 
         public DrawableStoryboardLayer OverlayLayer => Children.Single(layer => layer.Name == "Overlay");

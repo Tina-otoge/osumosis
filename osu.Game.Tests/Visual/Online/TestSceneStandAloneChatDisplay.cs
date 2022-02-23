@@ -4,13 +4,13 @@
 using osu.Framework.Allocation;
 using osu.Framework.Graphics;
 using osu.Game.Online.Chat;
-using osu.Game.Users;
 using osuTK;
 using System;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Graphics.Containers;
 using osu.Game.Graphics.Containers;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Overlays.Chat;
 using osuTK.Input;
 
@@ -18,26 +18,26 @@ namespace osu.Game.Tests.Visual.Online
 {
     public class TestSceneStandAloneChatDisplay : OsuManualInputManagerTestScene
     {
-        private readonly User admin = new User
+        private readonly APIUser admin = new APIUser
         {
             Username = "HappyStick",
             Id = 2,
             Colour = "f2ca34"
         };
 
-        private readonly User redUser = new User
+        private readonly APIUser redUser = new APIUser
         {
             Username = "BanchoBot",
             Id = 3,
         };
 
-        private readonly User blueUser = new User
+        private readonly APIUser blueUser = new APIUser
         {
             Username = "Zallius",
             Id = 4,
         };
 
-        private readonly User longUsernameUser = new User
+        private readonly APIUser longUsernameUser = new APIUser
         {
             Username = "Very Long Long Username",
             Id = 5,
@@ -82,6 +82,28 @@ namespace osu.Game.Tests.Visual.Online
                 }
             };
         });
+
+        [Test]
+        public void TestSystemMessageOrdering()
+        {
+            var standardMessage = new Message(messageIdSequence++)
+            {
+                Sender = admin,
+                Content = "I am a wang!"
+            };
+
+            var infoMessage1 = new InfoMessage($"the system is calling {messageIdSequence++}");
+            var infoMessage2 = new InfoMessage($"the system is calling {messageIdSequence++}");
+
+            AddStep("message from admin", () => testChannel.AddNewMessages(standardMessage));
+            AddStep("message from system", () => testChannel.AddNewMessages(infoMessage1));
+            AddStep("message from system", () => testChannel.AddNewMessages(infoMessage2));
+
+            AddAssert("message order is correct", () => testChannel.Messages.Count == 3
+                                                        && testChannel.Messages[0] == standardMessage
+                                                        && testChannel.Messages[1] == infoMessage1
+                                                        && testChannel.Messages[2] == infoMessage2);
+        }
 
         [Test]
         public void TestManyMessages()
@@ -149,7 +171,7 @@ namespace osu.Game.Tests.Visual.Online
             {
                 var indices = chatDisplay.FillFlow.OfType<DrawableChannel.DaySeparator>().Select(ds => chatDisplay.FillFlow.IndexOf(ds));
 
-                foreach (var i in indices)
+                foreach (int i in indices)
                 {
                     if (i < chatDisplay.FillFlow.Count && chatDisplay.FillFlow[i + 1] is DrawableChannel.DaySeparator)
                         return false;
@@ -287,8 +309,8 @@ namespace osu.Game.Tests.Visual.Online
 
         private class TestStandAloneChatDisplay : StandAloneChatDisplay
         {
-            public TestStandAloneChatDisplay(bool textbox = false)
-                : base(textbox)
+            public TestStandAloneChatDisplay(bool textBox = false)
+                : base(textBox)
             {
             }
 

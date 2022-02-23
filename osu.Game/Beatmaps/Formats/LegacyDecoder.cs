@@ -27,7 +27,7 @@ namespace osu.Game.Beatmaps.Formats
 
         protected override void ParseStreamInto(LineBufferedReader stream, T output)
         {
-            Section section = Section.None;
+            Section section = Section.General;
 
             string line;
 
@@ -36,13 +36,18 @@ namespace osu.Game.Beatmaps.Formats
                 if (ShouldSkipLine(line))
                     continue;
 
+                if (section != Section.Metadata)
+                {
+                    // comments should not be stripped from metadata lines, as the song metadata may contain "//" as valid data.
+                    line = StripComments(line);
+                }
+
+                line = line.TrimEnd();
+
                 if (line.StartsWith('[') && line.EndsWith(']'))
                 {
                     if (!Enum.TryParse(line[1..^1], out section))
-                    {
                         Logger.Log($"Unknown section \"{line}\" in \"{output}\"");
-                        section = Section.None;
-                    }
 
                     OnBeginNewSection(section);
                     continue;
@@ -71,8 +76,6 @@ namespace osu.Game.Beatmaps.Formats
 
         protected virtual void ParseLine(T output, Section section, string line)
         {
-            line = StripComments(line);
-
             switch (section)
             {
                 case Section.Colours:
@@ -83,7 +86,7 @@ namespace osu.Game.Beatmaps.Formats
 
         protected string StripComments(string line)
         {
-            var index = line.AsSpan().IndexOf("//".AsSpan());
+            int index = line.AsSpan().IndexOf("//".AsSpan());
             if (index > 0)
                 return line.Substring(0, index);
 
@@ -117,7 +120,7 @@ namespace osu.Game.Beatmaps.Formats
             {
                 if (!(output is IHasComboColours tHasComboColours)) return;
 
-                tHasComboColours.AddComboColours(colour);
+                tHasComboColours.CustomComboColours.Add(colour);
             }
             else
             {
@@ -129,7 +132,7 @@ namespace osu.Game.Beatmaps.Formats
 
         protected KeyValuePair<string, string> SplitKeyVal(string line, char separator = ':')
         {
-            var split = line.Split(separator, 2);
+            string[] split = line.Split(separator, 2);
 
             return new KeyValuePair<string, string>
             (
@@ -142,7 +145,6 @@ namespace osu.Game.Beatmaps.Formats
 
         protected enum Section
         {
-            None,
             General,
             Editor,
             Metadata,
@@ -175,7 +177,7 @@ namespace osu.Game.Beatmaps.Formats
 
             public LegacyDifficultyControlPoint()
             {
-                SpeedMultiplierBindable.Precision = double.Epsilon;
+                SliderVelocityBindable.Precision = double.Epsilon;
             }
 
             public override void CopyFrom(ControlPoint other)

@@ -13,6 +13,7 @@ using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Bindables;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
@@ -25,7 +26,8 @@ namespace osu.Game.Tests.Visual.Online
         {
             LeaderboardModSelector modSelector;
             FillFlowContainer<SpriteText> selectedMods;
-            var ruleset = new Bindable<RulesetInfo>();
+
+            var ruleset = new Bindable<IRulesetInfo>();
 
             Add(selectedMods = new FillFlowContainer<SpriteText>
             {
@@ -45,14 +47,14 @@ namespace osu.Game.Tests.Visual.Online
                 switch (args.Action)
                 {
                     case NotifyCollectionChangedAction.Add:
-                        args.NewItems.Cast<Mod>().ForEach(mod => selectedMods.Add(new OsuSpriteText
+                        args.NewItems.AsNonNull().Cast<Mod>().ForEach(mod => selectedMods.Add(new OsuSpriteText
                         {
                             Text = mod.Acronym,
                         }));
                         break;
 
                     case NotifyCollectionChangedAction.Remove:
-                        args.OldItems.Cast<Mod>().ForEach(mod =>
+                        args.OldItems.AsNonNull().Cast<Mod>().ForEach(mod =>
                         {
                             foreach (var selected in selectedMods)
                             {

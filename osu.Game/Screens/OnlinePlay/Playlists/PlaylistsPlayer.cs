@@ -4,83 +4,45 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
-using osu.Framework.Logging;
 using osu.Framework.Screens;
+using osu.Game.Extensions;
 using osu.Game.Online.API;
 using osu.Game.Online.Rooms;
 using osu.Game.Rulesets;
 using osu.Game.Scoring;
 using osu.Game.Screens.Play;
 using osu.Game.Screens.Ranking;
+using osu.Game.Users;
 
 namespace osu.Game.Screens.OnlinePlay.Playlists
 {
-    public class PlaylistsPlayer : Player
+    public class PlaylistsPlayer : RoomSubmittingPlayer
     {
         public Action Exited;
 
-        [Resolved(typeof(Room), nameof(Room.RoomID))]
-        protected Bindable<long?> RoomId { get; private set; }
+        protected override UserActivity InitialActivity => new UserActivity.InPlaylistGame(Beatmap.Value.BeatmapInfo, Ruleset.Value);
 
-        protected readonly PlaylistItem PlaylistItem;
-
-        protected int? Token { get; private set; }
-
-        [Resolved]
-        private IAPIProvider api { get; set; }
-
-        [Resolved]
-        private IBindable<RulesetInfo> ruleset { get; set; }
-
-        public PlaylistsPlayer(PlaylistItem playlistItem, PlayerConfiguration configuration = null)
-            : base(configuration)
+        public PlaylistsPlayer(Room room, PlaylistItem playlistItem, PlayerConfiguration configuration = null)
+            : base(room, playlistItem, configuration)
         {
-            PlaylistItem = playlistItem;
         }
 
         [BackgroundDependencyLoader]
-        private void load()
+        private void load(IBindable<RulesetInfo> ruleset)
         {
-            Token = null;
-
-            bool failed = false;
-
             // Sanity checks to ensure that PlaylistsPlayer matches the settings for the current PlaylistItem
-            if (Beatmap.Value.BeatmapInfo.OnlineBeatmapID != PlaylistItem.Beatmap.Value.OnlineBeatmapID)
+            if (!Beatmap.Value.BeatmapInfo.MatchesOnlineID(PlaylistItem.Beatmap))
                 throw new InvalidOperationException("Current Beatmap does not match PlaylistItem's Beatmap");
 
-            if (ruleset.Value.ID != PlaylistItem.Ruleset.Value.ID)
+            if (ruleset.Value.OnlineID != PlaylistItem.RulesetID)
                 throw new InvalidOperationException("Current Ruleset does not match PlaylistItem's Ruleset");
 
-            if (!PlaylistItem.RequiredMods.All(m => Mods.Value.Any(m.Equals)))
+            var localMods = Mods.Value.Select(m => new APIMod(m)).ToArray();
+            if (!PlaylistItem.RequiredMods.All(m => localMods.Any(m.Equals)))
                 throw new InvalidOperationException("Current Mods do not match PlaylistItem's RequiredMods");
-
-            var req = new CreateRoomScoreRequest(RoomId.Value ?? 0, PlaylistItem.ID, Game.VersionHash);
-            req.Success += r => Token = r.ID;
-            req.Failure += e =>
-            {
-                failed = true;
-
-                if (string.IsNullOrEmpty(e.Message))
-                    Logger.Error(e, "Failed to retrieve a score submission token.");
-                else
-                    Logger.Log($"You are not able to submit a score: {e.Message}", level: LogLevel.Important);
-
-                Schedule(() =>
-                {
-                    ValidForResume = false;
-                    this.Exit();
-                });
-            };
-
-            api.Queue(req);
-
-            while (!failed && !Token.HasValue)
-                Thread.Sleep(1000);
         }
 
         public override bool OnExiting(IScreen next)
@@ -95,40 +57,15 @@ namespace osu.Game.Screens.OnlinePlay.Playlists
 
         protected override ResultsScreen CreateResults(ScoreInfo score)
         {
-            Debug.Assert(RoomId.Value != null);
-            return new PlaylistsResultsScreen(score, RoomId.Value.Value, PlaylistItem, true);
+            Debug.Assert(Room.RoomID.Value != null);
+            return new PlaylistsResultsScreen(score, Room.RoomID.Value.Value, PlaylistItem, true);
         }
 
-        protected override Score CreateScore()
+        protected override async Task PrepareScoreForResultsAsync(Score score)
         {
-            var score = base.CreateScore();
-            score.ScoreInfo.TotalScore = (int)Math.Round(ScoreProcessor.GetStandardisedScore());
-            return score;
-        }
+            await base.PrepareScoreForResultsAsync(score).ConfigureAwait(false);
 
-        protected override async Task SubmitScore(Score score)
-        {
-            await base.SubmitScore(score).ConfigureAwait(false);
-
-            Debug.Assert(Token != null);
-
-            var tcs = new TaskCompletionSource<bool>();
-            var request = new SubmitRoomScoreRequest(Token.Value, RoomId.Value ?? 0, PlaylistItem.ID, score.ScoreInfo);
-
-            request.Success += s =>
-            {
-                score.ScoreInfo.OnlineScoreID = s.ID;
-                tcs.SetResult(true);
-            };
-
-            request.Failure += e =>
-            {
-                Logger.Error(e, "Failed to submit score");
-                tcs.SetResult(false);
-            };
-
-            api.Queue(request);
-            await tcs.Task.ConfigureAwait(false);
+            Score.ScoreInfo.TotalScore = (int)Math.Round(ScoreProcessor.GetStandardisedScore());
         }
 
         protected override void Dispose(bool isDisposing)

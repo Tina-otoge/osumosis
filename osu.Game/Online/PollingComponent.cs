@@ -2,8 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using osu.Framework.Bindables;
+using osu.Framework.Development;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Threading;
 
@@ -47,39 +49,13 @@ namespace osu.Game.Online
             pollIfNecessary();
         }
 
-        private bool pollIfNecessary()
+        /// <summary>
+        /// Immediately performs a <see cref="Poll"/>.
+        /// </summary>
+        public void PollImmediately()
         {
-            // we must be loaded so we have access to clock.
-            if (!IsLoaded) return false;
-
-            // there's already a poll process running.
-            if (pollingActive) return false;
-
-            // don't try polling if the time between polls hasn't been set.
-            if (TimeBetweenPolls.Value == 0) return false;
-
-            if (!lastTimePolled.HasValue)
-            {
-                doPoll();
-                return true;
-            }
-
-            if (Time.Current - lastTimePolled.Value > TimeBetweenPolls.Value)
-            {
-                doPoll();
-                return true;
-            }
-
-            // not ennough time has passed since the last poll. we do want to schedule a poll to happen, though.
+            lastTimePolled = Time.Current - TimeBetweenPolls.Value;
             scheduleNextPoll();
-            return false;
-        }
-
-        private void doPoll()
-        {
-            scheduledPoll = null;
-            pollingActive = true;
-            Poll().ContinueWith(_ => pollComplete());
         }
 
         /// <summary>
@@ -90,13 +66,13 @@ namespace osu.Game.Online
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Immediately performs a <see cref="Poll"/>.
-        /// </summary>
-        public void PollImmediately()
+        private void doPoll()
         {
-            lastTimePolled = Time.Current - TimeBetweenPolls.Value;
-            scheduleNextPoll();
+            Debug.Assert(ThreadSafety.IsUpdateThread);
+
+            scheduledPoll = null;
+            pollingActive = true;
+            Poll().ContinueWith(_ => pollComplete());
         }
 
         /// <summary>
@@ -109,6 +85,33 @@ namespace osu.Game.Online
 
             if (scheduledPoll == null)
                 pollIfNecessary();
+        }
+
+        private void pollIfNecessary()
+        {
+            // we must be loaded so we have access to clock.
+            if (!IsLoaded) return;
+
+            // there's already a poll process running.
+            if (pollingActive) return;
+
+            // don't try polling if the time between polls hasn't been set.
+            if (TimeBetweenPolls.Value == 0) return;
+
+            if (!lastTimePolled.HasValue)
+            {
+                Scheduler.AddOnce(doPoll);
+                return;
+            }
+
+            if (Time.Current - lastTimePolled.Value > TimeBetweenPolls.Value)
+            {
+                Scheduler.AddOnce(doPoll);
+                return;
+            }
+
+            // not enough time has passed since the last poll. we do want to schedule a poll to happen, though.
+            scheduleNextPoll();
         }
 
         private void scheduleNextPoll()

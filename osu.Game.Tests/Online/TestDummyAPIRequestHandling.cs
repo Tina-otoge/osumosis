@@ -23,8 +23,10 @@ namespace osu.Game.Tests.Online
                 {
                     case CommentVoteRequest cRequest:
                         cRequest.TriggerSuccess(new CommentBundle());
-                        break;
+                        return true;
                 }
+
+                return false;
             });
 
             CommentVoteRequest request = null;
@@ -40,7 +42,7 @@ namespace osu.Game.Tests.Online
 
             AddAssert("response event fired", () => response != null);
 
-            AddAssert("request has response", () => request.Result == response);
+            AddAssert("request has response", () => request.Response == response);
         }
 
         [Test]
@@ -108,8 +110,10 @@ namespace osu.Game.Tests.Online
                 {
                     case LeaveChannelRequest cRequest:
                         cRequest.TriggerSuccess();
-                        break;
+                        return true;
                 }
+
+                return false;
             });
         }
     }

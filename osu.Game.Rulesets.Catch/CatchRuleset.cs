@@ -22,7 +22,9 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using System;
 using osu.Framework.Extensions.EnumExtensions;
+using osu.Game.Rulesets.Catch.Edit;
 using osu.Game.Rulesets.Catch.Skinning.Legacy;
+using osu.Game.Rulesets.Edit;
 using osu.Game.Skinning;
 
 namespace osu.Game.Rulesets.Catch
@@ -114,6 +116,8 @@ namespace osu.Game.Rulesets.Catch
                     return new Mod[]
                     {
                         new CatchModDifficultyAdjust(),
+                        new CatchModClassic(),
+                        new CatchModMirror(),
                     };
 
                 case ModType.Automation:
@@ -126,7 +130,10 @@ namespace osu.Game.Rulesets.Catch
                 case ModType.Fun:
                     return new Mod[]
                     {
-                        new MultiMod(new ModWindUp(), new ModWindDown())
+                        new MultiMod(new ModWindUp(), new ModWindDown()),
+                        new CatchModFloatingFruits(),
+                        new CatchModMuted(),
+                        new CatchModNoScope(),
                     };
 
                 default:
@@ -159,26 +166,30 @@ namespace osu.Game.Rulesets.Catch
             switch (result)
             {
                 case HitResult.LargeTickHit:
-                    return "large droplet";
+                    return "Large droplet";
 
                 case HitResult.SmallTickHit:
-                    return "small droplet";
+                    return "Small droplet";
 
                 case HitResult.LargeBonus:
-                    return "banana";
+                    return "Banana";
             }
 
             return base.GetDisplayNameForHitResult(result);
         }
 
-        public override DifficultyCalculator CreateDifficultyCalculator(WorkingBeatmap beatmap) => new CatchDifficultyCalculator(this, beatmap);
+        public override DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap) => new CatchDifficultyCalculator(RulesetInfo, beatmap);
 
-        public override ISkin CreateLegacySkinProvider(ISkinSource source, IBeatmap beatmap) => new CatchLegacySkinTransformer(source);
+        public override ISkin CreateLegacySkinProvider(ISkin skin, IBeatmap beatmap) => new CatchLegacySkinTransformer(skin);
 
         public override PerformanceCalculator CreatePerformanceCalculator(DifficultyAttributes attributes, ScoreInfo score) => new CatchPerformanceCalculator(this, attributes, score);
 
         public int LegacyID => 2;
 
         public override IConvertibleReplayFrame CreateConvertibleReplayFrame() => new CatchReplayFrame();
+
+        public override HitObjectComposer CreateHitObjectComposer() => new CatchHitObjectComposer(this);
+
+        public override IBeatmapVerifier CreateBeatmapVerifier() => new CatchBeatmapVerifier();
     }
 }

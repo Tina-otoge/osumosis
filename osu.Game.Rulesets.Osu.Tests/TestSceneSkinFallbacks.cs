@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using osu.Framework.Allocation;
@@ -19,6 +20,7 @@ using osu.Game.Configuration;
 using osu.Game.Graphics;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Rulesets.Osu.Objects.Drawables;
+using osu.Game.Rulesets.Osu.Skinning.Default;
 using osu.Game.Skinning;
 using osu.Game.Storyboards;
 using osu.Game.Tests.Visual;
@@ -42,10 +44,10 @@ namespace osu.Game.Rulesets.Osu.Tests
         {
             AddStep("enable user provider", () => testUserSkin.Enabled = true);
 
-            AddStep("enable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, true));
+            AddStep("enable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, true));
             checkNextHitObject("beatmap");
 
-            AddStep("disable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, false));
+            AddStep("disable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, false));
             checkNextHitObject("user");
 
             AddStep("disable user provider", () => testUserSkin.Enabled = false);
@@ -57,20 +59,20 @@ namespace osu.Game.Rulesets.Osu.Tests
         {
             AddStep("enable user provider", () => testUserSkin.Enabled = true);
 
-            AddStep("enable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, true));
-            AddStep("enable beatmap colours", () => LocalConfig.Set<bool>(OsuSetting.BeatmapColours, true));
+            AddStep("enable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, true));
+            AddStep("enable beatmap colours", () => LocalConfig.SetValue(OsuSetting.BeatmapColours, true));
             checkNextHitObject("beatmap");
 
-            AddStep("enable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, true));
-            AddStep("disable beatmap colours", () => LocalConfig.Set<bool>(OsuSetting.BeatmapColours, false));
+            AddStep("enable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, true));
+            AddStep("disable beatmap colours", () => LocalConfig.SetValue(OsuSetting.BeatmapColours, false));
             checkNextHitObject("beatmap");
 
-            AddStep("disable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, false));
-            AddStep("enable beatmap colours", () => LocalConfig.Set<bool>(OsuSetting.BeatmapColours, true));
+            AddStep("disable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, false));
+            AddStep("enable beatmap colours", () => LocalConfig.SetValue(OsuSetting.BeatmapColours, true));
             checkNextHitObject("user");
 
-            AddStep("disable beatmap skin", () => LocalConfig.Set<bool>(OsuSetting.BeatmapSkins, false));
-            AddStep("disable beatmap colours", () => LocalConfig.Set<bool>(OsuSetting.BeatmapColours, false));
+            AddStep("disable beatmap skin", () => LocalConfig.SetValue(OsuSetting.BeatmapSkins, false));
+            AddStep("disable beatmap colours", () => LocalConfig.SetValue(OsuSetting.BeatmapColours, false));
             checkNextHitObject("user");
 
             AddStep("disable user provider", () => testUserSkin.Enabled = false);
@@ -85,9 +87,9 @@ namespace osu.Game.Rulesets.Osu.Tests
                 if (firstObject == null)
                     return false;
 
-                var skinnable = firstObject.ApproachCircle.Child as SkinnableDrawable;
+                var skinnable = firstObject.ApproachCircle;
 
-                if (skin == null && skinnable?.Drawable is Sprite)
+                if (skin == null && skinnable?.Drawable is DefaultApproachCircle)
                     // check for default skin provider
                     return true;
 
@@ -162,10 +164,13 @@ namespace osu.Game.Rulesets.Osu.Tests
 
             public Texture GetTexture(string componentName, WrapMode wrapModeS, WrapMode wrapModeT) => null;
 
-            public Sample GetSample(ISampleInfo sampleInfo) => null;
+            public ISample GetSample(ISampleInfo sampleInfo) => null;
 
-            public TValue GetValue<TConfiguration, TValue>(Func<TConfiguration, TValue> query) where TConfiguration : SkinConfiguration => default;
             public IBindable<TValue> GetConfig<TLookup, TValue>(TLookup lookup) => null;
+
+            public ISkin FindProvider(Func<ISkin, bool> lookupFunction) => lookupFunction(this) ? this : null;
+
+            public IEnumerable<ISkin> AllSources => new[] { this };
 
             public event Action SourceChanged;
 

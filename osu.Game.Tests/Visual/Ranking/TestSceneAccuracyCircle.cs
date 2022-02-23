@@ -8,6 +8,7 @@ using osu.Framework.Graphics;
 using osu.Framework.Graphics.Colour;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Mods;
@@ -15,89 +16,23 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Scoring;
 using osu.Game.Screens.Ranking.Expanded.Accuracy;
 using osu.Game.Tests.Beatmaps;
-using osu.Game.Users;
 using osuTK;
 
 namespace osu.Game.Tests.Visual.Ranking
 {
     public class TestSceneAccuracyCircle : OsuTestScene
     {
-        [Test]
-        public void TestLowDRank()
+        [TestCase(0.2, ScoreRank.D)]
+        [TestCase(0.5, ScoreRank.D)]
+        [TestCase(0.75, ScoreRank.C)]
+        [TestCase(0.85, ScoreRank.B)]
+        [TestCase(0.925, ScoreRank.A)]
+        [TestCase(0.975, ScoreRank.S)]
+        [TestCase(0.9999, ScoreRank.S)]
+        [TestCase(1, ScoreRank.X)]
+        public void TestRank(double accuracy, ScoreRank rank)
         {
-            var score = createScore();
-            score.Accuracy = 0.2;
-            score.Rank = ScoreRank.D;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestDRank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.5;
-            score.Rank = ScoreRank.D;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestCRank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.75;
-            score.Rank = ScoreRank.C;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestBRank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.85;
-            score.Rank = ScoreRank.B;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestARank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.925;
-            score.Rank = ScoreRank.A;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestSRank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.975;
-            score.Rank = ScoreRank.S;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestAlmostSSRank()
-        {
-            var score = createScore();
-            score.Accuracy = 0.9999;
-            score.Rank = ScoreRank.S;
-
-            addCircleStep(score);
-        }
-
-        [Test]
-        public void TestSSRank()
-        {
-            var score = createScore();
-            score.Accuracy = 1;
-            score.Rank = ScoreRank.X;
+            var score = createScore(accuracy, rank);
 
             addCircleStep(score);
         }
@@ -129,19 +64,20 @@ namespace osu.Game.Tests.Visual.Ranking
             };
         });
 
-        private ScoreInfo createScore() => new ScoreInfo
+        private ScoreInfo createScore(double accuracy, ScoreRank rank) => new ScoreInfo
         {
-            User = new User
+            User = new APIUser
             {
                 Id = 2,
                 Username = "peppy",
             },
-            Beatmap = new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo,
+            BeatmapInfo = new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo,
+            Ruleset = new OsuRuleset().RulesetInfo,
             Mods = new Mod[] { new OsuModHardRock(), new OsuModDoubleTime() },
             TotalScore = 2845370,
-            Accuracy = 0.95,
+            Accuracy = accuracy,
             MaxCombo = 999,
-            Rank = ScoreRank.S,
+            Rank = rank,
             Date = DateTimeOffset.Now,
             Statistics =
             {

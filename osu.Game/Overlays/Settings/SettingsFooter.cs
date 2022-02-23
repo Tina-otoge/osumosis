@@ -19,12 +19,12 @@ namespace osu.Game.Overlays.Settings
     public class SettingsFooter : FillFlowContainer
     {
         [BackgroundDependencyLoader]
-        private void load(OsuGameBase game, OsuColour colours, RulesetStore rulesets)
+        private void load(OsuGameBase game, RulesetStore rulesets)
         {
             RelativeSizeAxes = Axes.X;
             AutoSizeAxes = Axes.Y;
             Direction = FillDirection.Vertical;
-            Padding = new MarginPadding { Top = 20, Bottom = 30 };
+            Padding = new MarginPadding { Top = 20, Bottom = 30, Horizontal = SettingsPanel.CONTENT_MARGINS };
 
             var modes = new List<Drawable>();
 
@@ -32,6 +32,8 @@ namespace osu.Game.Overlays.Settings
             {
                 var icon = new ConstrainedIconContainer
                 {
+                    Anchor = Anchor.TopCentre,
+                    Origin = Anchor.TopCentre,
                     Icon = ruleset.CreateInstance().CreateIcon(),
                     Colour = Color4.Gray,
                     Size = new Vector2(20),
@@ -47,7 +49,8 @@ namespace osu.Game.Overlays.Settings
                     Anchor = Anchor.TopCentre,
                     Origin = Anchor.TopCentre,
                     Direction = FillDirection.Full,
-                    AutoSizeAxes = Axes.Both,
+                    RelativeSizeAxes = Axes.X,
+                    AutoSizeAxes = Axes.Y,
                     Children = modes,
                     Spacing = new Vector2(5),
                     Padding = new MarginPadding { Bottom = 10 },

@@ -8,7 +8,7 @@ using osu.Framework.Input;
 using osu.Framework.Testing;
 using osu.Game.Configuration;
 using osu.Game.Input;
-using osu.Game.Tests.Visual.Navigation;
+using osu.Game.Tests.Visual;
 
 namespace osu.Game.Tests.Input
 {
@@ -17,9 +17,6 @@ namespace osu.Game.Tests.Input
     {
         [Resolved]
         private FrameworkConfigManager frameworkConfigManager { get; set; }
-
-        [Resolved]
-        private OsuConfigManager osuConfigManager { get; set; }
 
         [TestCase(WindowMode.Windowed)]
         [TestCase(WindowMode.Borderless)]
@@ -88,7 +85,7 @@ namespace osu.Game.Tests.Input
             => AddStep($"make window {mode}", () => frameworkConfigManager.GetBindable<WindowMode>(FrameworkSetting.WindowMode).Value = mode);
 
         private void setGameSideModeTo(OsuConfineMouseMode mode)
-            => AddStep($"set {mode} game-side", () => Game.LocalConfig.Set(OsuSetting.ConfineMouseMode, mode));
+            => AddStep($"set {mode} game-side", () => Game.LocalConfig.SetValue(OsuSetting.ConfineMouseMode, mode));
 
         private void setLocalUserPlayingTo(bool playing)
             => AddStep($"local user {(playing ? "playing" : "not playing")}", () => Game.LocalUserPlaying.Value = playing);

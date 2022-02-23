@@ -13,7 +13,6 @@ using osu.Framework.Graphics.UserInterface;
 using osu.Framework.Input.Events;
 using osu.Framework.Localisation;
 using osu.Game.Beatmaps;
-using osu.Game.Graphics;
 using osu.Game.Graphics.Containers;
 using osu.Game.Graphics.UserInterface;
 using osuTK;
@@ -181,16 +180,17 @@ namespace osu.Game.Collections
                 MaxHeight = 200;
             }
 
-            protected override DrawableDropdownMenuItem CreateDrawableDropdownMenuItem(MenuItem item) => new CollectionDropdownMenuItem(item);
+            protected override DrawableDropdownMenuItem CreateDrawableDropdownMenuItem(MenuItem item) => new CollectionDropdownMenuItem(item)
+            {
+                BackgroundColourHover = HoverColour,
+                BackgroundColourSelected = SelectionColour
+            };
         }
 
         protected class CollectionDropdownMenuItem : OsuDropdownMenu.DrawableOsuDropdownMenuItem
         {
             [NotNull]
             protected new CollectionFilterMenuItem Item => ((DropdownMenuItem<CollectionFilterMenuItem>)base.Item).Value;
-
-            [Resolved]
-            private OsuColour colours { get; set; }
 
             [Resolved]
             private IBindable<WorkingBeatmap> beatmap { get; set; }

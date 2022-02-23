@@ -22,7 +22,7 @@ namespace osu.Game.Tests.Visual.Gameplay
         [BackgroundDependencyLoader]
         private void load(OsuConfigManager config)
         {
-            config.Set(OsuSetting.ShowStoryboard, true);
+            config.SetValue(OsuSetting.ShowStoryboard, true);
 
             storyboard = new Storyboard();
             var backgroundLayer = storyboard.GetLayer("Background");
@@ -57,7 +57,7 @@ namespace osu.Game.Tests.Visual.Gameplay
 
         private void checkForFirstSamplePlayback()
         {
-            AddUntilStep("storyboard loaded", () => Player.Beatmap.Value.StoryboardLoaded);
+            AddAssert("storyboard loaded", () => Player.Beatmap.Value.Storyboard != null);
             AddUntilStep("any storyboard samples playing", () => allStoryboardSamples.Any(sound => sound.IsPlaying));
         }
 

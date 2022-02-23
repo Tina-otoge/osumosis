@@ -5,23 +5,24 @@ using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
-using osu.Game.Users;
 using JetBrains.Annotations;
+using osu.Framework.Localisation;
+using osu.Game.Online.API.Requests.Responses;
 
 namespace osu.Game.Overlays.Profile.Sections
 {
     public abstract class ProfileSubsection : FillFlowContainer
     {
-        protected readonly Bindable<User> User = new Bindable<User>();
+        protected readonly Bindable<APIUser> User = new Bindable<APIUser>();
 
-        private readonly string headerText;
+        private readonly LocalisableString headerText;
         private readonly CounterVisibilityState counterVisibilityState;
 
         private ProfileSubsectionHeader header;
 
-        protected ProfileSubsection(Bindable<User> user, string headerText = "", CounterVisibilityState counterVisibilityState = CounterVisibilityState.AlwaysHidden)
+        protected ProfileSubsection(Bindable<APIUser> user, LocalisableString? headerText = null, CounterVisibilityState counterVisibilityState = CounterVisibilityState.AlwaysHidden)
         {
-            this.headerText = headerText;
+            this.headerText = headerText ?? string.Empty;
             this.counterVisibilityState = counterVisibilityState;
             User.BindTo(user);
         }
@@ -37,7 +38,7 @@ namespace osu.Game.Overlays.Profile.Sections
             {
                 header = new ProfileSubsectionHeader(headerText, counterVisibilityState)
                 {
-                    Alpha = string.IsNullOrEmpty(headerText) ? 0 : 1
+                    Alpha = string.IsNullOrEmpty(headerText.ToString()) ? 0 : 1
                 },
                 CreateContent()
             };

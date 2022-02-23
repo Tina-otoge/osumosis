@@ -1,9 +1,12 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Linq;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Graphics.Shapes;
+using osu.Framework.Graphics.UserInterface;
+using osu.Framework.Testing;
 using osu.Framework.Testing.Input;
 using osu.Game.Graphics.Cursor;
 using osu.Game.Graphics.Sprites;
@@ -11,6 +14,7 @@ using osu.Game.Graphics.UserInterface;
 using osu.Game.Input.Bindings;
 using osuTK;
 using osuTK.Graphics;
+using osuTK.Input;
 
 namespace osu.Game.Tests.Visual
 {
@@ -24,18 +28,34 @@ namespace osu.Game.Tests.Visual
         private readonly TriangleButton buttonTest;
         private readonly TriangleButton buttonLocal;
 
+        /// <summary>
+        /// Whether to create a nested container to handle <see cref="GlobalAction"/>s that result from local (manual) test input.
+        /// This should be disabled when instantiating an <see cref="OsuGame"/> instance else actions will be lost.
+        /// </summary>
+        protected virtual bool CreateNestedActionContainer => true;
+
         protected OsuManualInputManagerTestScene()
         {
             MenuCursorContainer cursorContainer;
+
+            CompositeDrawable mainContent = cursorContainer = new MenuCursorContainer { RelativeSizeAxes = Axes.Both };
+
+            cursorContainer.Child = content = new OsuTooltipContainer(cursorContainer.Cursor)
+            {
+                RelativeSizeAxes = Axes.Both
+            };
+
+            if (CreateNestedActionContainer)
+            {
+                mainContent = new GlobalActionContainer(null).WithChild(mainContent);
+            }
 
             base.Content.AddRange(new Drawable[]
             {
                 InputManager = new ManualInputManager
                 {
                     UseParentInput = true,
-                    Child = new GlobalActionContainer(null)
-                        .WithChild((cursorContainer = new MenuCursorContainer { RelativeSizeAxes = Axes.Both })
-                            .WithChild(content = new OsuTooltipContainer(cursorContainer.Cursor) { RelativeSizeAxes = Axes.Both }))
+                    Child = mainContent
                 },
                 new Container
                 {
@@ -96,6 +116,25 @@ namespace osu.Game.Tests.Visual
                         },
                     }
                 },
+            });
+        }
+
+        /// <summary>
+        /// Wait for a button to become enabled, then click it.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        protected void ClickButtonWhenEnabled<T>()
+            where T : Drawable
+        {
+            if (typeof(T) == typeof(Button))
+                AddUntilStep($"wait for {typeof(T).Name} enabled", () => (this.ChildrenOfType<T>().Single() as Button)?.Enabled.Value == true);
+            else
+                AddUntilStep($"wait for {typeof(T).Name} enabled", () => this.ChildrenOfType<T>().Single().ChildrenOfType<Button>().Single().Enabled.Value);
+
+            AddStep($"click {typeof(T).Name}", () =>
+            {
+                InputManager.MoveMouseTo(this.ChildrenOfType<T>().Single());
+                InputManager.Click(MouseButton.Left);
             });
         }
 

@@ -14,10 +14,24 @@ namespace osu.Game.Configuration
     {
         protected override void InitialiseDefaults()
         {
-            Set(Static.LoginOverlayDisplayed, false);
-            Set(Static.MutedAudioNotificationShownOnce, false);
-            Set(Static.LastHoverSoundPlaybackTime, (double?)null);
-            Set<APISeasonalBackgrounds>(Static.SeasonalBackgrounds, null);
+            SetDefault(Static.LoginOverlayDisplayed, false);
+            SetDefault(Static.MutedAudioNotificationShownOnce, false);
+            SetDefault(Static.LowBatteryNotificationShownOnce, false);
+            SetDefault(Static.LastHoverSoundPlaybackTime, (double?)null);
+            SetDefault<APISeasonalBackgrounds>(Static.SeasonalBackgrounds, null);
+        }
+
+        /// <summary>
+        /// Revert statics to their defaults after being idle for appropriate amount of time.
+        /// </summary>
+        /// <remarks>
+        /// This only affects a subset of statics which the user would expect to have reset after a break.
+        /// </remarks>
+        public void ResetAfterInactivity()
+        {
+            GetBindable<bool>(Static.LoginOverlayDisplayed).SetDefault();
+            GetBindable<bool>(Static.MutedAudioNotificationShownOnce).SetDefault();
+            GetBindable<bool>(Static.LowBatteryNotificationShownOnce).SetDefault();
         }
     }
 
@@ -25,6 +39,7 @@ namespace osu.Game.Configuration
     {
         LoginOverlayDisplayed,
         MutedAudioNotificationShownOnce,
+        LowBatteryNotificationShownOnce,
 
         /// <summary>
         /// Info about seasonal backgrounds available fetched from API - see <see cref="APISeasonalBackgrounds"/>.

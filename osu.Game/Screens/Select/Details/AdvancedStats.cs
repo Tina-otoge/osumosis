@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Mods;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using osu.Framework.Extensions;
 using osu.Framework.Localisation;
 using osu.Framework.Threading;
 using osu.Framework.Utils;
@@ -38,16 +39,16 @@ namespace osu.Game.Screens.Select.Details
         protected readonly StatisticRow FirstValue, HpDrain, Accuracy, ApproachRate;
         private readonly StatisticRow starDifficulty;
 
-        private BeatmapInfo beatmap;
+        private IBeatmapInfo beatmapInfo;
 
-        public BeatmapInfo Beatmap
+        public IBeatmapInfo BeatmapInfo
         {
-            get => beatmap;
+            get => beatmapInfo;
             set
             {
-                if (value == beatmap) return;
+                if (value == beatmapInfo) return;
 
-                beatmap = value;
+                beatmapInfo = value;
 
                 updateStatistics();
             }
@@ -94,9 +95,6 @@ namespace osu.Game.Screens.Select.Details
             modSettingChangeTracker = new ModSettingChangeTracker(mods.NewValue);
             modSettingChangeTracker.SettingChanged += m =>
             {
-                if (!(m is IApplicableToDifficulty))
-                    return;
-
                 debouncedStatisticsUpdate?.Cancel();
                 debouncedStatisticsUpdate = Scheduler.AddDelayed(updateStatistics, 100);
             };
@@ -106,18 +104,18 @@ namespace osu.Game.Screens.Select.Details
 
         private void updateStatistics()
         {
-            BeatmapDifficulty baseDifficulty = Beatmap?.BaseDifficulty;
+            IBeatmapDifficultyInfo baseDifficulty = BeatmapInfo?.Difficulty;
             BeatmapDifficulty adjustedDifficulty = null;
 
             if (baseDifficulty != null && mods.Value.Any(m => m is IApplicableToDifficulty))
             {
-                adjustedDifficulty = baseDifficulty.Clone();
+                adjustedDifficulty = new BeatmapDifficulty(baseDifficulty);
 
                 foreach (var mod in mods.Value.OfType<IApplicableToDifficulty>())
                     mod.ApplyToDifficulty(adjustedDifficulty);
             }
 
-            switch (Beatmap?.Ruleset?.ID ?? 0)
+            switch (BeatmapInfo?.Ruleset.OnlineID)
             {
                 case 3:
                     // Account for mania differences locally for now
@@ -145,17 +143,23 @@ namespace osu.Game.Screens.Select.Details
         {
             starDifficultyCancellationSource?.Cancel();
 
-            if (Beatmap == null)
+            if (BeatmapInfo == null)
                 return;
 
             starDifficultyCancellationSource = new CancellationTokenSource();
 
-            var normalStarDifficulty = difficultyCache.GetDifficultyAsync(Beatmap, ruleset.Value, null, starDifficultyCancellationSource.Token);
-            var moddedStarDifficulty = difficultyCache.GetDifficultyAsync(Beatmap, ruleset.Value, mods.Value, starDifficultyCancellationSource.Token);
+            var normalStarDifficultyTask = difficultyCache.GetDifficultyAsync(BeatmapInfo, ruleset.Value, null, starDifficultyCancellationSource.Token);
+            var moddedStarDifficultyTask = difficultyCache.GetDifficultyAsync(BeatmapInfo, ruleset.Value, mods.Value, starDifficultyCancellationSource.Token);
 
-            Task.WhenAll(normalStarDifficulty, moddedStarDifficulty).ContinueWith(_ => Schedule(() =>
+            Task.WhenAll(normalStarDifficultyTask, moddedStarDifficultyTask).ContinueWith(_ => Schedule(() =>
             {
-                starDifficulty.Value = ((float)normalStarDifficulty.Result.Stars, (float)moddedStarDifficulty.Result.Stars);
+                var normalDifficulty = normalStarDifficultyTask.GetResultSafely();
+                var moddedDifficulty = moddedStarDifficultyTask.GetResultSafely();
+
+                if (normalDifficulty == null || moddedDifficulty == null)
+                    return;
+
+                starDifficulty.Value = ((float)normalDifficulty.Value.Stars, (float)moddedDifficulty.Value.Stars);
             }), starDifficultyCancellationSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
         }
 
@@ -186,11 +190,11 @@ namespace osu.Game.Screens.Select.Details
                 set => name.Text = value;
             }
 
-            private (float baseValue, float? adjustedValue) value;
+            private (float baseValue, float? adjustedValue)? value;
 
             public (float baseValue, float? adjustedValue) Value
             {
-                get => value;
+                get => value ?? (0, null);
                 set
                 {
                     if (value == this.value)

@@ -1,9 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Linq;
-using osuTK;
-using osuTK.Graphics;
+using System;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
@@ -22,6 +20,8 @@ using osu.Game.Screens.Edit;
 using osu.Game.Screens.OnlinePlay.Multiplayer;
 using osu.Game.Screens.OnlinePlay.Playlists;
 using osu.Game.Screens.Select;
+using osuTK;
+using osuTK.Graphics;
 
 namespace osu.Game.Screens.Menu
 {
@@ -36,8 +36,6 @@ namespace osu.Game.Screens.Menu
         public override bool AllowBackButton => false;
 
         public override bool AllowExternalScreenChange => true;
-
-        public override bool AllowRateAdjustments => false;
 
         private Screen songSelect;
 
@@ -73,7 +71,7 @@ namespace osu.Game.Screens.Menu
         private SongTicker songTicker;
 
         [BackgroundDependencyLoader(true)]
-        private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, RankingsOverlay rankings, OsuConfigManager config, SessionStatics statics)
+        private void load(BeatmapListingOverlay beatmapListing, SettingsOverlay settings, OsuConfigManager config, SessionStatics statics)
         {
             holdDelay = config.GetBindable<float>(OsuSetting.UIHoldActivationDelay);
             loginDisplayed = statics.GetBindable<bool>(Static.LoginOverlayDisplayed);
@@ -104,7 +102,7 @@ namespace osu.Game.Screens.Menu
                             OnEdit = delegate
                             {
                                 Beatmap.SetDefault();
-                                this.Push(new Editor());
+                                this.Push(new EditorLoader());
                             },
                             OnSolo = loadSoloSongSelect,
                             OnMultiplayer = () => this.Push(new Multiplayer()),
@@ -120,7 +118,7 @@ namespace osu.Game.Screens.Menu
                     Origin = Anchor.TopRight,
                     Margin = new MarginPadding { Right = 15, Top = 5 }
                 },
-                exitConfirmOverlay?.CreateProxy() ?? Drawable.Empty()
+                exitConfirmOverlay?.CreateProxy() ?? Empty()
             });
 
             buttons.StateChanged += state =>
@@ -217,10 +215,16 @@ namespace osu.Game.Screens.Menu
             }
             else if (!api.IsLoggedIn)
             {
-                logo.Action += displayLogin;
+                // copy out old action to avoid accidentally capturing logo.Action in closure, causing a self-reference loop.
+                var previousAction = logo.Action;
+
+                // we want to hook into logo.Action to display the login overlay, but also preserve the return value of the old action.
+                // therefore pass the old action to displayLogin, so that it can return that value.
+                // this ensures that the OsuLogo sample does not play when it is not desired.
+                logo.Action = () => displayLogin(previousAction);
             }
 
-            bool displayLogin()
+            bool displayLogin(Func<bool> originalAction)
             {
                 if (!loginDisplayed.Value)
                 {
@@ -228,7 +232,7 @@ namespace osu.Game.Screens.Menu
                     loginDisplayed.Value = true;
                 }
 
-                return true;
+                return originalAction.Invoke();
             }
         }
 
@@ -270,15 +274,11 @@ namespace osu.Game.Screens.Menu
             if (!exitConfirmed && dialogOverlay != null)
             {
                 if (dialogOverlay.CurrentDialog is ConfirmExitDialog exitDialog)
-                {
-                    exitConfirmed = true;
-                    exitDialog.Buttons.First().Click();
-                }
+                    exitDialog.PerformOkAction();
                 else
-                {
                     dialogOverlay.Push(new ConfirmExitDialog(confirmAndExit, () => exitConfirmOverlay.Abort()));
-                    return true;
-                }
+
+                return true;
             }
 
             buttons.State = ButtonSystemState.Exit;

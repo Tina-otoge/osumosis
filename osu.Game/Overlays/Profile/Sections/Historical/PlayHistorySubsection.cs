@@ -2,18 +2,21 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Bindables;
-using osu.Game.Users;
-using static osu.Game.Users.User;
+using osu.Framework.Localisation;
+using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Resources.Localisation.Web;
 
 namespace osu.Game.Overlays.Profile.Sections.Historical
 {
     public class PlayHistorySubsection : ChartProfileSubsection
     {
-        public PlayHistorySubsection(Bindable<User> user)
-            : base(user, "Play History")
+        protected override LocalisableString GraphCounterName => UsersStrings.ShowExtraHistoricalMonthlyPlaycountsCountLabel;
+
+        public PlayHistorySubsection(Bindable<APIUser> user)
+            : base(user, UsersStrings.ShowExtraHistoricalMonthlyPlaycountsTitle)
         {
         }
 
-        protected override UserHistoryCount[] GetValues(User user) => user?.MonthlyPlaycounts;
+        protected override APIUserHistoryCount[] GetValues(APIUser user) => user?.MonthlyPlayCounts;
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
@@ -17,6 +18,8 @@ using osu.Game.Beatmaps;
 using osu.Game.Graphics.Sprites;
 using osu.Game.Replays;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Replays;
 using osu.Game.Rulesets.UI;
 using osu.Game.Scoring;
@@ -38,88 +41,101 @@ namespace osu.Game.Tests.Visual.Gameplay
         private TestReplayRecorder recorder;
 
         [Cached]
-        private GameplayBeatmap gameplayBeatmap = new GameplayBeatmap(new Beatmap());
+        private GameplayState gameplayState = new GameplayState(new Beatmap(), new OsuRuleset(), Array.Empty<Mod>());
 
-        [SetUp]
-        public void SetUp() => Schedule(() =>
+        [SetUpSteps]
+        public void SetUpSteps()
         {
-            replay = new Replay();
+            AddStep("Reset recorder state", cleanUpState);
 
-            Add(new GridContainer
+            AddStep("Setup containers", () =>
             {
-                RelativeSizeAxes = Axes.Both,
-                Content = new[]
+                replay = new Replay();
+
+                Add(new GridContainer
                 {
-                    new Drawable[]
+                    RelativeSizeAxes = Axes.Both,
+                    Content = new[]
                     {
-                        recordingManager = new TestRulesetInputManager(new TestSceneModSettings.TestRulesetInfo(), 0, SimultaneousBindingMode.Unique)
+                        new Drawable[]
                         {
-                            Recorder = recorder = new TestReplayRecorder(new Score { Replay = replay })
+                            recordingManager = new TestRulesetInputManager(TestSceneModSettings.CreateTestRulesetInfo(), 0, SimultaneousBindingMode.Unique)
                             {
-                                ScreenSpaceToGamefield = pos => recordingManager.ToLocalSpace(pos),
-                            },
-                            Child = new Container
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Children = new Drawable[]
+                                Recorder = recorder = new TestReplayRecorder(new Score
                                 {
-                                    new Box
+                                    Replay = replay,
+                                    ScoreInfo =
                                     {
-                                        Colour = Color4.Brown,
-                                        RelativeSizeAxes = Axes.Both,
-                                    },
-                                    new OsuSpriteText
+                                        BeatmapInfo = gameplayState.Beatmap.BeatmapInfo,
+                                        Ruleset = new OsuRuleset().RulesetInfo,
+                                    }
+                                })
+                                {
+                                    ScreenSpaceToGamefield = pos => recordingManager.ToLocalSpace(pos),
+                                },
+                                Child = new Container
+                                {
+                                    RelativeSizeAxes = Axes.Both,
+                                    Children = new Drawable[]
                                     {
-                                        Text = "Recording",
-                                        Scale = new Vector2(3),
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                    },
-                                    new TestInputConsumer()
-                                }
-                            },
-                        }
-                    },
-                    new Drawable[]
-                    {
-                        playbackManager = new TestRulesetInputManager(new TestSceneModSettings.TestRulesetInfo(), 0, SimultaneousBindingMode.Unique)
+                                        new Box
+                                        {
+                                            Colour = Color4.Brown,
+                                            RelativeSizeAxes = Axes.Both,
+                                        },
+                                        new OsuSpriteText
+                                        {
+                                            Text = "Recording",
+                                            Scale = new Vector2(3),
+                                            Anchor = Anchor.Centre,
+                                            Origin = Anchor.Centre,
+                                        },
+                                        new TestInputConsumer()
+                                    }
+                                },
+                            }
+                        },
+                        new Drawable[]
                         {
-                            ReplayInputHandler = new TestFramedReplayInputHandler(replay)
+                            playbackManager = new TestRulesetInputManager(TestSceneModSettings.CreateTestRulesetInfo(), 0, SimultaneousBindingMode.Unique)
                             {
-                                GamefieldToScreenSpace = pos => playbackManager.ToScreenSpace(pos),
-                            },
-                            Child = new Container
-                            {
-                                RelativeSizeAxes = Axes.Both,
-                                Children = new Drawable[]
+                                ReplayInputHandler = new TestFramedReplayInputHandler(replay)
                                 {
-                                    new Box
+                                    GamefieldToScreenSpace = pos => playbackManager.ToScreenSpace(pos),
+                                },
+                                Child = new Container
+                                {
+                                    RelativeSizeAxes = Axes.Both,
+                                    Children = new Drawable[]
                                     {
-                                        Colour = Color4.DarkBlue,
-                                        RelativeSizeAxes = Axes.Both,
-                                    },
-                                    new OsuSpriteText
-                                    {
-                                        Text = "Playback",
-                                        Scale = new Vector2(3),
-                                        Anchor = Anchor.Centre,
-                                        Origin = Anchor.Centre,
-                                    },
-                                    new TestInputConsumer()
-                                }
-                            },
+                                        new Box
+                                        {
+                                            Colour = Color4.DarkBlue,
+                                            RelativeSizeAxes = Axes.Both,
+                                        },
+                                        new OsuSpriteText
+                                        {
+                                            Text = "Playback",
+                                            Scale = new Vector2(3),
+                                            Anchor = Anchor.Centre,
+                                            Origin = Anchor.Centre,
+                                        },
+                                        new TestInputConsumer()
+                                    }
+                                },
+                            }
                         }
                     }
-                }
+                });
             });
-        });
+        }
 
         [Test]
         public void TestBasic()
         {
             AddStep("move to center", () => InputManager.MoveMouseTo(recordingManager.ScreenSpaceDrawQuad.Centre));
-            AddUntilStep("one frame recorded", () => replay.Frames.Count == 1);
-            AddAssert("position matches", () => playbackManager.ChildrenOfType<Box>().First().Position == recordingManager.ChildrenOfType<Box>().First().Position);
+            AddUntilStep("at least one frame recorded", () => replay.Frames.Count > 0);
+            AddUntilStep("position matches", () => playbackManager.ChildrenOfType<Box>().First().Position == recordingManager.ChildrenOfType<Box>().First().Position);
         }
 
         [Test]
@@ -139,14 +155,16 @@ namespace osu.Game.Tests.Visual.Gameplay
         public void TestLimitedFrameRate()
         {
             ScheduledDelegate moveFunction = null;
+            int initialFrameCount = 0;
 
             AddStep("lower rate", () => recorder.RecordFrameRate = 2);
+            AddStep("count frames", () => initialFrameCount = replay.Frames.Count);
             AddStep("move to center", () => InputManager.MoveMouseTo(recordingManager.ScreenSpaceDrawQuad.Centre));
             AddStep("much move", () => moveFunction = Scheduler.AddDelayed(() =>
                 InputManager.MoveMouseTo(InputManager.CurrentState.Mouse.Position + new Vector2(-1, 0)), 10, true));
             AddWaitStep("move", 10);
             AddStep("stop move", () => moveFunction.Cancel());
-            AddAssert("less than 10 frames recorded", () => replay.Frames.Count < 10);
+            AddAssert("less than 10 frames recorded", () => replay.Frames.Count - initialFrameCount < 10);
         }
 
         [Test]
@@ -175,7 +193,14 @@ namespace osu.Game.Tests.Visual.Gameplay
         [TearDownSteps]
         public void TearDown()
         {
-            AddStep("stop recorder", () => recorder.Expire());
+            AddStep("stop recorder", cleanUpState);
+        }
+
+        private void cleanUpState()
+        {
+            // Ensure previous recorder is disposed else it may affect the global playing state of `SpectatorClient`.
+            recorder?.RemoveAndDisposeImmediately();
+            recorder = null;
         }
 
         public class TestFramedReplayInputHandler : FramedReplayInputHandler<TestReplayFrame>
@@ -185,7 +210,7 @@ namespace osu.Game.Tests.Visual.Gameplay
             {
             }
 
-            public override void CollectPendingInputs(List<IInput> inputs)
+            protected override void CollectReplayInputs(List<IInput> inputs)
             {
                 inputs.Add(new MousePositionAbsoluteInput { Position = GamefieldToScreenSpace(CurrentFrame?.Position ?? Vector2.Zero) });
                 inputs.Add(new ReplayState<TestAction> { PressedActions = CurrentFrame?.Actions ?? new List<TestAction>() });
@@ -220,13 +245,16 @@ namespace osu.Game.Tests.Visual.Gameplay
                 return base.OnMouseMove(e);
             }
 
-            public bool OnPressed(TestAction action)
+            public bool OnPressed(KeyBindingPressEvent<TestAction> e)
             {
+                if (e.Repeat)
+                    return false;
+
                 box.Colour = Color4.White;
                 return true;
             }
 
-            public void OnReleased(TestAction action)
+            public void OnReleased(KeyBindingReleaseEvent<TestAction> e)
             {
                 box.Colour = Color4.Black;
             }

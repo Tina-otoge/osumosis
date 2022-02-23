@@ -89,7 +89,7 @@ namespace osu.Game.Graphics.UserInterface
 
         public void ReplayAnimation()
         {
-            var t = current;
+            float t = current;
             ResetCount();
             Current = t;
         }
@@ -105,7 +105,7 @@ namespace osu.Game.Graphics.UserInterface
 
         private void animate(float newValue)
         {
-            for (var i = 0; i < stars.Children.Count; i++)
+            for (int i = 0; i < stars.Children.Count; i++)
             {
                 var star = stars.Children[i];
 
@@ -113,7 +113,7 @@ namespace osu.Game.Graphics.UserInterface
 
                 double delay = (current <= newValue ? Math.Max(i - current, 0) : Math.Max(current - 1 - i, 0)) * AnimationDelay;
 
-                using (star.BeginDelayedSequence(delay, true))
+                using (star.BeginDelayedSequence(delay))
                     star.DisplayAt(getStarScale(i, newValue));
             }
         }

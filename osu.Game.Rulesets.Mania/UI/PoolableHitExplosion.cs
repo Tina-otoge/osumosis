@@ -15,9 +15,6 @@ namespace osu.Game.Rulesets.Mania.UI
 
         public JudgementResult Result { get; private set; }
 
-        [Resolved]
-        private Column column { get; set; }
-
         private SkinnableDrawable skinnableExplosion;
 
         public PoolableHitExplosion()
@@ -28,7 +25,7 @@ namespace osu.Game.Rulesets.Mania.UI
         [BackgroundDependencyLoader]
         private void load()
         {
-            InternalChild = skinnableExplosion = new SkinnableDrawable(new ManiaSkinComponent(ManiaSkinComponents.HitExplosion, column.Index), _ => new DefaultHitExplosion())
+            InternalChild = skinnableExplosion = new SkinnableDrawable(new ManiaSkinComponent(ManiaSkinComponents.HitExplosion), _ => new DefaultHitExplosion())
             {
                 RelativeSizeAxes = Axes.Both
             };

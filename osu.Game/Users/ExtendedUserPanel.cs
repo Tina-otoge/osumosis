@@ -11,6 +11,7 @@ using osu.Game.Graphics.Sprites;
 using osu.Framework.Graphics.Sprites;
 using osu.Game.Users.Drawables;
 using osu.Framework.Input.Events;
+using osu.Game.Online.API.Requests.Responses;
 
 namespace osu.Game.Users
 {
@@ -25,7 +26,7 @@ namespace osu.Game.Users
         private SpriteIcon statusIcon;
         private OsuSpriteText statusMessage;
 
-        protected ExtendedUserPanel(User user)
+        protected ExtendedUserPanel(APIUser user)
             : base(user)
         {
         }
@@ -48,15 +49,12 @@ namespace osu.Game.Users
             statusIcon.FinishTransforms();
         }
 
-        protected UpdateableAvatar CreateAvatar() => new UpdateableAvatar
-        {
-            User = User,
-            OpenOnClick = { Value = false }
-        };
+        protected UpdateableAvatar CreateAvatar() => new UpdateableAvatar(User, false);
 
         protected UpdateableFlag CreateFlag() => new UpdateableFlag(User.Country)
         {
-            Size = new Vector2(39, 26)
+            Size = new Vector2(39, 26),
+            Action = Action,
         };
 
         protected SpriteIcon CreateStatusIcon() => statusIcon = new SpriteIcon

@@ -136,10 +136,9 @@ namespace osu.Game.Rulesets.Osu.Statistics
                             }
                         }
                     },
-                    bufferedGrid = new BufferedContainer
+                    bufferedGrid = new BufferedContainer(cachedFrameBuffer: true)
                     {
                         RelativeSizeAxes = Axes.Both,
-                        CacheDrawnFrameBuffer = true,
                         BackgroundColour = Color4Extensions.FromHex("#202624").Opacity(0),
                         Child = pointGrid = new GridContainer
                         {
@@ -166,7 +165,7 @@ namespace osu.Game.Rulesets.Osu.Statistics
 
                     var point = new HitPoint(pointType, this)
                     {
-                        Colour = pointType == HitPointType.Hit ? new Color4(102, 255, 204, 255) : new Color4(255, 102, 102, 255)
+                        BaseColour = pointType == HitPointType.Hit ? new Color4(102, 255, 204, 255) : new Color4(255, 102, 102, 255)
                     };
 
                     points[r][c] = point;
@@ -175,11 +174,11 @@ namespace osu.Game.Rulesets.Osu.Statistics
 
             pointGrid.Content = points;
 
-            if (score.HitEvents == null || score.HitEvents.Count == 0)
+            if (score.HitEvents.Count == 0)
                 return;
 
             // Todo: This should probably not be done like this.
-            float radius = OsuHitObject.OBJECT_RADIUS * (1.0f - 0.7f * (playableBeatmap.BeatmapInfo.BaseDifficulty.CircleSize - 5) / 5) / 2;
+            float radius = OsuHitObject.OBJECT_RADIUS * (1.0f - 0.7f * (playableBeatmap.Difficulty.CircleSize - 5) / 5) / 2;
 
             foreach (var e in score.HitEvents.Where(e => e.HitObject is HitCircle && !(e.HitObject is SliderTailCircle)))
             {
@@ -216,7 +215,7 @@ namespace osu.Game.Rulesets.Osu.Statistics
             // Likewise sin(pi/2)=1 and sin(3pi/2)=-1, whereas we actually want these values to appear on the bottom/top respectively, so the y-coordinate also needs to be inverted.
             //
             // We also need to apply the anti-clockwise rotation.
-            var rotatedAngle = finalAngle - MathUtils.DegreesToRadians(rotation);
+            double rotatedAngle = finalAngle - MathUtils.DegreesToRadians(rotation);
             var rotatedCoordinate = -1 * new Vector2((float)Math.Cos(rotatedAngle), (float)Math.Sin(rotatedAngle));
 
             Vector2 localCentre = new Vector2(points_per_dimension - 1) / 2;
@@ -234,6 +233,11 @@ namespace osu.Game.Rulesets.Osu.Statistics
 
         private class HitPoint : Circle
         {
+            /// <summary>
+            /// The base colour which will be lightened/darkened depending on the value of this <see cref="HitPoint"/>.
+            /// </summary>
+            public Color4 BaseColour;
+
             private readonly HitPointType pointType;
             private readonly AccuracyHeatmap heatmap;
 
@@ -284,7 +288,7 @@ namespace osu.Game.Rulesets.Osu.Statistics
 
                 Alpha = Math.Min(amount / lighten_cutoff, 1);
                 if (pointType == HitPointType.Hit)
-                    Colour = ((Color4)Colour).Lighten(Math.Max(0, amount - lighten_cutoff));
+                    Colour = BaseColour.Lighten(Math.Max(0, amount - lighten_cutoff));
             }
         }
 

@@ -13,6 +13,7 @@ using osu.Framework.Graphics.Primitives;
 using osu.Framework.Allocation;
 using System.Collections.Generic;
 using osu.Framework.Graphics.Batches;
+using osu.Framework.Graphics.OpenGL.Buffers;
 using osu.Framework.Graphics.OpenGL.Vertices;
 using osu.Framework.Lists;
 
@@ -56,12 +57,6 @@ namespace osu.Game.Graphics.Backgrounds
                 updateColours();
             }
         }
-
-        /// <summary>
-        /// Whether we want to expire triangles as they exit our draw area completely.
-        /// </summary>
-        [Obsolete("Unused.")] // Can be removed 20210518
-        protected virtual bool ExpireOffScreenTriangles => true;
 
         /// <summary>
         /// Whether we should create new triangles as others expire.
@@ -159,7 +154,7 @@ namespace osu.Game.Graphics.Backgrounds
                 TriangleParticle newParticle = parts[i];
 
                 // Scale moved distance by the size of the triangle. Smaller triangles should move more slowly.
-                newParticle.Position.Y += parts[i].Scale * movedDistance;
+                newParticle.Position.Y += Math.Max(0.5f, parts[i].Scale) * movedDistance;
                 newParticle.Colour.A = adjustedAlpha;
 
                 parts[i] = newParticle;
@@ -187,7 +182,10 @@ namespace osu.Game.Graphics.Backgrounds
 
         private void addTriangles(bool randomY)
         {
-            AimCount = (int)(DrawWidth * DrawHeight * 0.002f / (triangleScale * triangleScale) * SpawnRatio);
+            // limited by the maximum size of QuadVertexBuffer for safety.
+            const int max_triangles = QuadVertexBuffer<TexturedVertex2D>.MAX_QUADS;
+
+            AimCount = (int)Math.Min(max_triangles, (DrawWidth * DrawHeight * 0.002f / (triangleScale * triangleScale) * SpawnRatio));
 
             for (int i = 0; i < AimCount - parts.Count; i++)
                 parts.Add(createTriangle(randomY));
@@ -216,7 +214,7 @@ namespace osu.Game.Graphics.Backgrounds
             float u1 = 1 - nextRandom(); //uniform(0,1] random floats
             float u2 = 1 - nextRandom();
             float randStdNormal = (float)(Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2)); // random normal(0,1)
-            var scale = Math.Max(triangleScale * (mean + std_dev * randStdNormal), 0.1f); // random normal(mean,stdDev^2)
+            float scale = Math.Max(triangleScale * (mean + std_dev * randStdNormal), 0.1f); // random normal(mean,stdDev^2)
 
             return new TriangleParticle { Scale = scale };
         }
@@ -346,7 +344,6 @@ namespace osu.Game.Graphics.Backgrounds
             /// such that the smaller triangles appear on top.
             /// </summary>
             /// <param name="other"></param>
-            /// <returns></returns>
             public int CompareTo(TriangleParticle other) => other.Scale.CompareTo(Scale);
         }
     }

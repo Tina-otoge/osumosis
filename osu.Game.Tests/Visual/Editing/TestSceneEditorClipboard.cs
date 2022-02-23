@@ -3,12 +3,17 @@
 
 using System.Linq;
 using NUnit.Framework;
+using osu.Framework.Testing;
+using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets;
+using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Screens.Edit.Compose.Components;
+using osu.Game.Screens.Edit.Compose.Components.Timeline;
 using osu.Game.Tests.Beatmaps;
 using osuTK;
 
@@ -81,11 +86,17 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddAssert("is one object", () => EditorBeatmap.HitObjects.Count == 1);
 
+            Slider slider = null;
+            AddStep("retrieve slider", () => slider = (Slider)EditorBeatmap.HitObjects.Single());
             AddAssert("path matches", () =>
             {
-                var path = ((Slider)EditorBeatmap.HitObjects.Single()).Path;
+                var path = slider.Path;
                 return path.ControlPoints.Count == 2 && path.ControlPoints.SequenceEqual(addedObject.Path.ControlPoints);
             });
+
+            // see `HitObject.control_point_leniency`.
+            AddAssert("sample control point has correct time", () => Precision.AlmostEquals(slider.SampleControlPoint.Time, slider.GetEndTime(), 1));
+            AddAssert("difficulty control point has correct time", () => slider.DifficultyControlPoint.Time == slider.StartTime);
         }
 
         [Test]
@@ -110,8 +121,9 @@ namespace osu.Game.Tests.Visual.Editing
             AddAssert("duration matches", () => ((Spinner)EditorBeatmap.HitObjects.Single()).Duration == 5000);
         }
 
-        [Test]
-        public void TestCopyPaste()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TestCopyPaste(bool deselectAfterCopy)
         {
             var addedObject = new HitCircle { StartTime = 1000 };
 
@@ -123,11 +135,22 @@ namespace osu.Game.Tests.Visual.Editing
 
             AddStep("move forward in time", () => EditorClock.Seek(2000));
 
+            if (deselectAfterCopy)
+            {
+                AddStep("deselect", () => EditorBeatmap.SelectedHitObjects.Clear());
+
+                AddUntilStep("timeline selection box is not visible", () => Editor.ChildrenOfType<Timeline>().First().ChildrenOfType<SelectionBox>().First().Alpha == 0);
+                AddUntilStep("composer selection box is not visible", () => Editor.ChildrenOfType<HitObjectComposer>().First().ChildrenOfType<SelectionBox>().First().Alpha == 0);
+            }
+
             AddStep("paste hitobject", () => Editor.Paste());
 
             AddAssert("are two objects", () => EditorBeatmap.HitObjects.Count == 2);
 
             AddAssert("new object selected", () => EditorBeatmap.SelectedHitObjects.Single().StartTime == 2000);
+
+            AddUntilStep("timeline selection box is visible", () => Editor.ChildrenOfType<Timeline>().First().ChildrenOfType<EditorSelectionHandler>().First().Alpha > 0);
+            AddUntilStep("composer selection box is visible", () => Editor.ChildrenOfType<HitObjectComposer>().First().ChildrenOfType<EditorSelectionHandler>().First().Alpha > 0);
         }
 
         [Test]

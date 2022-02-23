@@ -10,6 +10,7 @@ using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Shapes;
 using osu.Framework.Graphics.Sprites;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osu.Game.Graphics.Backgrounds;
 using osu.Game.Graphics.Containers;
 using osuTK;
@@ -42,9 +43,9 @@ namespace osu.Game.Overlays.Dialog
             set => icon.Icon = value;
         }
 
-        private string headerText;
+        private LocalisableString headerText;
 
-        public string HeaderText
+        public LocalisableString HeaderText
         {
             get => headerText;
             set
@@ -57,9 +58,9 @@ namespace osu.Game.Overlays.Dialog
             }
         }
 
-        private string bodyText;
+        private LocalisableString bodyText;
 
-        public string BodyText
+        public LocalisableString BodyText
         {
             get => bodyText;
             set
@@ -94,6 +95,10 @@ namespace osu.Game.Overlays.Dialog
                 }
             }
         }
+
+        // We always want dialogs to show their appear animation, so we request they start hidden.
+        // Normally this would not be required, but is here due to the manual Show() call that occurs before LoadComplete().
+        protected override bool StartHidden => true;
 
         protected PopupDialog()
         {
@@ -205,7 +210,16 @@ namespace osu.Game.Overlays.Dialog
                     },
                 },
             };
+
+            // It's important we start in a visible state so our state fires on hide, even before load.
+            // This is used by the DialogOverlay to know when the dialog was dismissed.
+            Show();
         }
+
+        /// <summary>
+        /// Programmatically clicks the first <see cref="PopupDialogOkButton"/>.
+        /// </summary>
+        public void PerformOkAction() => Buttons.OfType<PopupDialogOkButton>().First().TriggerClick();
 
         protected override bool OnKeyDown(KeyDownEvent e)
         {
@@ -252,7 +266,7 @@ namespace osu.Game.Overlays.Dialog
             if (!actionInvoked && content.IsPresent)
                 // In the case a user did not choose an action before a hide was triggered, press the last button.
                 // This is presumed to always be a sane default "cancel" action.
-                buttonsContainer.Last().Click();
+                buttonsContainer.Last().TriggerClick();
 
             content.FadeOut(EXIT_DURATION, Easing.InSine);
         }
@@ -260,7 +274,7 @@ namespace osu.Game.Overlays.Dialog
         private void pressButtonAtIndex(int index)
         {
             if (index < Buttons.Count())
-                Buttons.Skip(index).First().Click();
+                Buttons.Skip(index).First().TriggerClick();
         }
     }
 }

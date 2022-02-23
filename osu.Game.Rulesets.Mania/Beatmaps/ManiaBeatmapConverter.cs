@@ -42,12 +42,12 @@ namespace osu.Game.Rulesets.Mania.Beatmaps
         {
             IsForCurrentRuleset = beatmap.BeatmapInfo.Ruleset.Equals(ruleset.RulesetInfo);
 
-            var roundedCircleSize = Math.Round(beatmap.BeatmapInfo.BaseDifficulty.CircleSize);
-            var roundedOverallDifficulty = Math.Round(beatmap.BeatmapInfo.BaseDifficulty.OverallDifficulty);
+            double roundedCircleSize = Math.Round(beatmap.Difficulty.CircleSize);
+            double roundedOverallDifficulty = Math.Round(beatmap.Difficulty.OverallDifficulty);
 
             if (IsForCurrentRuleset)
             {
-                TargetColumns = (int)Math.Max(1, roundedCircleSize);
+                TargetColumns = GetColumnCountForNonConvert(beatmap.BeatmapInfo);
 
                 if (TargetColumns > ManiaRuleset.MAX_STAGE_KEYS)
                 {
@@ -71,11 +71,17 @@ namespace osu.Game.Rulesets.Mania.Beatmaps
             originalTargetColumns = TargetColumns;
         }
 
+        public static int GetColumnCountForNonConvert(BeatmapInfo beatmapInfo)
+        {
+            double roundedCircleSize = Math.Round(beatmapInfo.Difficulty.CircleSize);
+            return (int)Math.Max(1, roundedCircleSize);
+        }
+
         public override bool CanConvert() => Beatmap.HitObjects.All(h => h is IHasXPosition);
 
         protected override Beatmap<ManiaHitObject> ConvertBeatmap(IBeatmap original, CancellationToken cancellationToken)
         {
-            BeatmapDifficulty difficulty = original.BeatmapInfo.BaseDifficulty;
+            IBeatmapDifficultyInfo difficulty = original.Difficulty;
 
             int seed = (int)MathF.Round(difficulty.DrainRate + difficulty.CircleSize) * 20 + (int)(difficulty.OverallDifficulty * 41.2) + (int)MathF.Round(difficulty.ApproachRate);
             Random = new FastRandom(seed);

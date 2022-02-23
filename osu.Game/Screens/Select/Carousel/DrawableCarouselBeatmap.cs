@@ -40,7 +40,7 @@ namespace osu.Game.Screens.Select.Carousel
 
         private const float height = MAX_HEIGHT * 0.6f;
 
-        private readonly BeatmapInfo beatmap;
+        private readonly BeatmapInfo beatmapInfo;
 
         private Sprite background;
 
@@ -68,7 +68,7 @@ namespace osu.Game.Screens.Select.Carousel
 
         public DrawableCarouselBeatmap(CarouselBeatmap panel)
         {
-            beatmap = panel.Beatmap;
+            beatmapInfo = panel.BeatmapInfo;
             Item = panel;
         }
 
@@ -109,7 +109,7 @@ namespace osu.Game.Screens.Select.Carousel
                     Origin = Anchor.CentreLeft,
                     Children = new Drawable[]
                     {
-                        new DifficultyIcon(beatmap, shouldShowTooltip: false)
+                        new DifficultyIcon(beatmapInfo, shouldShowTooltip: false)
                         {
                             Scale = new Vector2(1.8f),
                         },
@@ -129,7 +129,7 @@ namespace osu.Game.Screens.Select.Carousel
                                     {
                                         new OsuSpriteText
                                         {
-                                            Text = beatmap.Version,
+                                            Text = beatmapInfo.DifficultyName,
                                             Font = OsuFont.GetFont(size: 20),
                                             Anchor = Anchor.BottomLeft,
                                             Origin = Anchor.BottomLeft
@@ -142,7 +142,7 @@ namespace osu.Game.Screens.Select.Carousel
                                         },
                                         new OsuSpriteText
                                         {
-                                            Text = $"{(beatmap.Metadata ?? beatmap.BeatmapSet.Metadata).Author.Username}",
+                                            Text = $"{beatmapInfo.Metadata.Author.Username}",
                                             Font = OsuFont.GetFont(italics: true),
                                             Anchor = Anchor.BottomLeft,
                                             Origin = Anchor.BottomLeft
@@ -156,10 +156,9 @@ namespace osu.Game.Screens.Select.Carousel
                                     AutoSizeAxes = Axes.Both,
                                     Children = new Drawable[]
                                     {
-                                        new TopLocalRank(beatmap)
+                                        new TopLocalRank(beatmapInfo)
                                         {
                                             Scale = new Vector2(0.8f),
-                                            Size = new Vector2(40, 20)
                                         },
                                         starCounter = new StarCounter
                                         {
@@ -200,7 +199,7 @@ namespace osu.Game.Screens.Select.Carousel
         protected override bool OnClick(ClickEvent e)
         {
             if (Item.State.Value == CarouselItemState.Selected)
-                startRequested?.Invoke(beatmap);
+                startRequested?.Invoke(beatmapInfo);
 
             return base.OnClick(e);
         }
@@ -216,7 +215,7 @@ namespace osu.Game.Screens.Select.Carousel
             if (Item.State.Value != CarouselItemState.Collapsed)
             {
                 // We've potentially cancelled the computation above so a new bindable is required.
-                starDifficultyBindable = difficultyCache.GetBindableDifficulty(beatmap, (starDifficultyCancellationSource = new CancellationTokenSource()).Token);
+                starDifficultyBindable = difficultyCache.GetBindableDifficulty(beatmapInfo, (starDifficultyCancellationSource = new CancellationTokenSource()).Token);
                 starDifficultyBindable.BindValueChanged(d =>
                 {
                     starCounter.Current = (float)(d.NewValue?.Stars ?? 0);
@@ -233,13 +232,13 @@ namespace osu.Game.Screens.Select.Carousel
                 List<MenuItem> items = new List<MenuItem>();
 
                 if (startRequested != null)
-                    items.Add(new OsuMenuItem("Play", MenuItemType.Highlighted, () => startRequested(beatmap)));
+                    items.Add(new OsuMenuItem("Play", MenuItemType.Highlighted, () => startRequested(beatmapInfo)));
 
                 if (editRequested != null)
-                    items.Add(new OsuMenuItem("Edit", MenuItemType.Standard, () => editRequested(beatmap)));
+                    items.Add(new OsuMenuItem("Edit", MenuItemType.Standard, () => editRequested(beatmapInfo)));
 
-                if (beatmap.OnlineBeatmapID.HasValue && beatmapOverlay != null)
-                    items.Add(new OsuMenuItem("Details...", MenuItemType.Standard, () => beatmapOverlay.FetchAndShowBeatmap(beatmap.OnlineBeatmapID.Value)));
+                if (beatmapInfo.OnlineID > 0 && beatmapOverlay != null)
+                    items.Add(new OsuMenuItem("Details...", MenuItemType.Standard, () => beatmapOverlay.FetchAndShowBeatmap(beatmapInfo.OnlineID)));
 
                 if (collectionManager != null)
                 {
@@ -251,7 +250,7 @@ namespace osu.Game.Screens.Select.Carousel
                 }
 
                 if (hideRequested != null)
-                    items.Add(new OsuMenuItem("Hide", MenuItemType.Destructive, () => hideRequested(beatmap)));
+                    items.Add(new OsuMenuItem("Hide", MenuItemType.Destructive, () => hideRequested(beatmapInfo)));
 
                 return items.ToArray();
             }
@@ -262,12 +261,12 @@ namespace osu.Game.Screens.Select.Carousel
             return new ToggleMenuItem(collection.Name.Value, MenuItemType.Standard, s =>
             {
                 if (s)
-                    collection.Beatmaps.Add(beatmap);
+                    collection.Beatmaps.Add(beatmapInfo);
                 else
-                    collection.Beatmaps.Remove(beatmap);
+                    collection.Beatmaps.Remove(beatmapInfo);
             })
             {
-                State = { Value = collection.Beatmaps.Contains(beatmap) }
+                State = { Value = collection.Beatmaps.Contains(beatmapInfo) }
             };
         }
 

@@ -33,12 +33,18 @@ namespace osu.Game.IO
         private readonly StorageConfigManager storageConfig;
         private readonly Storage defaultStorage;
 
-        public override string[] IgnoreDirectories => new[] { "cache" };
+        public override string[] IgnoreDirectories => new[]
+        {
+            "cache",
+            "client.realm.management"
+        };
 
         public override string[] IgnoreFiles => new[]
         {
             "framework.ini",
-            "storage.ini"
+            "storage.ini",
+            "client.realm.note",
+            "client.realm.lock",
         };
 
         public OsuStorage(GameHost host, Storage defaultStorage)
@@ -58,7 +64,7 @@ namespace osu.Game.IO
         /// </summary>
         public void ResetCustomStoragePath()
         {
-            storageConfig.Set(StorageConfig.FullPath, string.Empty);
+            storageConfig.SetValue(StorageConfig.FullPath, string.Empty);
             storageConfig.Save();
 
             ChangeTargetStorage(defaultStorage);
@@ -96,15 +102,25 @@ namespace osu.Game.IO
 
         protected override void ChangeTargetStorage(Storage newStorage)
         {
+            var lastStorage = UnderlyingStorage;
             base.ChangeTargetStorage(newStorage);
-            Logger.Storage = UnderlyingStorage.GetStorageForDirectory("logs");
+
+            if (lastStorage != null)
+            {
+                // for now we assume that if there was a previous storage, this is a migration operation.
+                // the logger shouldn't be set during initialisation as it can cause cross-talk in tests (due to being static).
+                Logger.Storage = UnderlyingStorage.GetStorageForDirectory("logs");
+            }
         }
 
-        public override void Migrate(Storage newStorage)
+        public override bool Migrate(Storage newStorage)
         {
-            base.Migrate(newStorage);
-            storageConfig.Set(StorageConfig.FullPath, newStorage.GetFullPath("."));
+            bool cleanupSucceeded = base.Migrate(newStorage);
+
+            storageConfig.SetValue(StorageConfig.FullPath, newStorage.GetFullPath("."));
             storageConfig.Save();
+
+            return cleanupSucceeded;
         }
     }
 

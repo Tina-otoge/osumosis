@@ -7,7 +7,6 @@ using osu.Framework.Audio.Track;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
-using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps.ControlPoints;
 using osu.Game.Graphics.Containers;
 using osu.Game.Rulesets.Judgements;
@@ -39,7 +38,7 @@ namespace osu.Game.Rulesets.Taiko.UI
         }
 
         [BackgroundDependencyLoader(true)]
-        private void load(TextureStore textures, GameplayBeatmap gameplayBeatmap)
+        private void load(GameplayState gameplayState)
         {
             InternalChildren = new[]
             {
@@ -49,8 +48,8 @@ namespace osu.Game.Rulesets.Taiko.UI
                 animations[TaikoMascotAnimationState.Fail] = new TaikoMascotAnimation(TaikoMascotAnimationState.Fail),
             };
 
-            if (gameplayBeatmap != null)
-                ((IBindable<JudgementResult>)LastResult).BindTo(gameplayBeatmap.LastJudgementResult);
+            if (gameplayState != null)
+                ((IBindable<JudgementResult>)LastResult).BindTo(gameplayState.LastJudgementResult);
         }
 
         protected override void LoadComplete()

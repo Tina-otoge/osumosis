@@ -3,83 +3,97 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
+using JetBrains.Annotations;
+using Newtonsoft.Json;
 using osu.Framework.Testing;
 using osu.Game.Database;
+using osu.Game.Extensions;
+using osu.Game.Models;
+using Realms;
+
+#nullable enable
 
 namespace osu.Game.Beatmaps
 {
     [ExcludeFromDynamicCompile]
-    public class BeatmapSetInfo : IHasPrimaryKey, IHasFiles<BeatmapSetFileInfo>, ISoftDelete, IEquatable<BeatmapSetInfo>
+    [MapTo("BeatmapSet")]
+    public class BeatmapSetInfo : RealmObject, IHasGuidPrimaryKey, IHasRealmFiles, ISoftDelete, IEquatable<BeatmapSetInfo>, IBeatmapSetInfo
     {
-        public int ID { get; set; }
+        [PrimaryKey]
+        public Guid ID { get; set; }
 
-        private int? onlineBeatmapSetID;
-
-        public int? OnlineBeatmapSetID
-        {
-            get => onlineBeatmapSetID;
-            set => onlineBeatmapSetID = value > 0 ? value : null;
-        }
+        [Indexed]
+        public int OnlineID { get; set; } = -1;
 
         public DateTimeOffset DateAdded { get; set; }
 
-        public BeatmapSetOnlineStatus Status { get; set; } = BeatmapSetOnlineStatus.None;
+        [JsonIgnore]
+        public IBeatmapMetadataInfo Metadata => Beatmaps.FirstOrDefault()?.Metadata ?? new BeatmapMetadata();
 
-        public BeatmapMetadata Metadata { get; set; }
+        public IList<BeatmapInfo> Beatmaps { get; } = null!;
 
-        public List<BeatmapInfo> Beatmaps { get; set; }
+        public IList<RealmNamedFileUsage> Files { get; } = null!;
 
-        [NotMapped]
-        public BeatmapSetOnlineInfo OnlineInfo { get; set; }
+        [Ignored]
+        public BeatmapOnlineStatus Status
+        {
+            get => (BeatmapOnlineStatus)StatusInt;
+            set => StatusInt = (int)value;
+        }
 
-        [NotMapped]
-        public BeatmapSetMetrics Metrics { get; set; }
+        [MapTo(nameof(Status))]
+        public int StatusInt { get; set; } = (int)BeatmapOnlineStatus.None;
 
-        /// <summary>
-        /// The maximum star difficulty of all beatmaps in this set.
-        /// </summary>
-        public double MaxStarDifficulty => Beatmaps?.Max(b => b.StarDifficulty) ?? 0;
-
-        /// <summary>
-        /// The maximum playable length in milliseconds of all beatmaps in this set.
-        /// </summary>
-        public double MaxLength => Beatmaps?.Max(b => b.Length) ?? 0;
-
-        /// <summary>
-        /// The maximum BPM of all beatmaps in this set.
-        /// </summary>
-        public double MaxBPM => Beatmaps?.Max(b => b.BPM) ?? 0;
-
-        [NotMapped]
         public bool DeletePending { get; set; }
 
-        public string Hash { get; set; }
+        public string Hash { get; set; } = string.Empty;
 
-        public string StoryboardFile => Files?.Find(f => f.Filename.EndsWith(".osb", StringComparison.OrdinalIgnoreCase))?.Filename;
-
-        public List<BeatmapSetFileInfo> Files { get; set; }
-
-        public override string ToString() => Metadata?.ToString() ?? base.ToString();
-
+        /// <summary>
+        /// Whether deleting this beatmap set should be prohibited (due to it being a system requirement to be present).
+        /// </summary>
         public bool Protected { get; set; }
 
-        public bool Equals(BeatmapSetInfo other)
+        public double MaxStarDifficulty => Beatmaps.Count == 0 ? 0 : Beatmaps.Max(b => b.StarRating);
+
+        public double MaxLength => Beatmaps.Count == 0 ? 0 : Beatmaps.Max(b => b.Length);
+
+        public double MaxBPM => Beatmaps.Count == 0 ? 0 : Beatmaps.Max(b => b.BPM);
+
+        public BeatmapSetInfo(IEnumerable<BeatmapInfo>? beatmaps = null)
+            : this()
         {
-            if (other == null)
-                return false;
-
-            if (ID != 0 && other.ID != 0)
-                return ID == other.ID;
-
-            if (OnlineBeatmapSetID.HasValue && other.OnlineBeatmapSetID.HasValue)
-                return OnlineBeatmapSetID == other.OnlineBeatmapSetID;
-
-            if (!string.IsNullOrEmpty(Hash) && !string.IsNullOrEmpty(other.Hash))
-                return Hash == other.Hash;
-
-            return ReferenceEquals(this, other);
+            ID = Guid.NewGuid();
+            if (beatmaps != null)
+                Beatmaps.AddRange(beatmaps);
         }
+
+        [UsedImplicitly] // Realm
+        private BeatmapSetInfo()
+        {
+        }
+
+        /// <summary>
+        /// Returns the storage path for the file in this beatmapset with the given filename, if any exists, otherwise null.
+        /// The path returned is relative to the user file storage.
+        /// </summary>
+        /// <param name="filename">The name of the file to get the storage path of.</param>
+        public string? GetPathForFile(string filename) => Files.SingleOrDefault(f => string.Equals(f.Filename, filename, StringComparison.OrdinalIgnoreCase))?.File.GetStoragePath();
+
+        public bool Equals(BeatmapSetInfo? other)
+        {
+            if (ReferenceEquals(this, other)) return true;
+            if (other == null) return false;
+
+            return ID == other.ID;
+        }
+
+        public override string ToString() => Metadata.GetDisplayString();
+
+        public bool Equals(IBeatmapSetInfo? other) => other is BeatmapSetInfo b && Equals(b);
+
+        IEnumerable<IBeatmapInfo> IBeatmapSetInfo.Beatmaps => Beatmaps;
+
+        IEnumerable<INamedFileUsage> IHasNamedFiles.Files => Files;
     }
 }

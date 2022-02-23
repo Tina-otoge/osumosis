@@ -30,6 +30,8 @@ namespace osu.Game.Rulesets.Objects
         /// </summary>
         public readonly Bindable<double?> ExpectedDistance = new Bindable<double?>();
 
+        public bool HasValidLength => Distance > 0;
+
         /// <summary>
         /// The control points of the path.
         /// </summary>
@@ -147,13 +149,44 @@ namespace osu.Game.Rulesets.Objects
         /// to 1 (end of the path).
         /// </summary>
         /// <param name="progress">Ranges from 0 (beginning of the path) to 1 (end of the path).</param>
-        /// <returns></returns>
         public Vector2 PositionAt(double progress)
         {
             ensureValid();
 
             double d = progressToDistance(progress);
             return interpolateVertices(indexOfDistance(d), d);
+        }
+
+        /// <summary>
+        /// Returns the control points belonging to the same segment as the one given.
+        /// The first point has a PathType which all other points inherit.
+        /// </summary>
+        /// <param name="controlPoint">One of the control points in the segment.</param>
+        public List<PathControlPoint> PointsInSegment(PathControlPoint controlPoint)
+        {
+            bool found = false;
+            List<PathControlPoint> pointsInCurrentSegment = new List<PathControlPoint>();
+
+            foreach (PathControlPoint point in ControlPoints)
+            {
+                if (point.Type != null)
+                {
+                    if (!found)
+                        pointsInCurrentSegment.Clear();
+                    else
+                    {
+                        pointsInCurrentSegment.Add(point);
+                        break;
+                    }
+                }
+
+                pointsInCurrentSegment.Add(point);
+
+                if (point == controlPoint)
+                    found = true;
+            }
+
+            return pointsInCurrentSegment;
         }
 
         private void invalidate()
@@ -182,18 +215,18 @@ namespace osu.Game.Rulesets.Objects
 
             Vector2[] vertices = new Vector2[ControlPoints.Count];
             for (int i = 0; i < ControlPoints.Count; i++)
-                vertices[i] = ControlPoints[i].Position.Value;
+                vertices[i] = ControlPoints[i].Position;
 
             int start = 0;
 
             for (int i = 0; i < ControlPoints.Count; i++)
             {
-                if (ControlPoints[i].Type.Value == null && i < ControlPoints.Count - 1)
+                if (ControlPoints[i].Type == null && i < ControlPoints.Count - 1)
                     continue;
 
                 // The current vertex ends the segment
                 var segmentVertices = vertices.AsSpan().Slice(start, i - start + 1);
-                var segmentType = ControlPoints[start].Type.Value ?? PathType.Linear;
+                var segmentType = ControlPoints[start].Type ?? PathType.Linear;
 
                 foreach (Vector2 t in calculateSubPath(segmentVertices, segmentType))
                 {
@@ -217,13 +250,13 @@ namespace osu.Game.Rulesets.Objects
                     if (subControlPoints.Length != 3)
                         break;
 
-                    List<Vector2> subpath = PathApproximator.ApproximateCircularArc(subControlPoints);
+                    List<Vector2> subPath = PathApproximator.ApproximateCircularArc(subControlPoints);
 
                     // If for some reason a circular arc could not be fit to the 3 given points, fall back to a numerically stable bezier approximation.
-                    if (subpath.Count == 0)
+                    if (subPath.Count == 0)
                         break;
 
-                    return subpath;
+                    return subPath;
 
                 case PathType.Catmull:
                     return PathApproximator.ApproximateCatmull(subControlPoints);
@@ -247,6 +280,13 @@ namespace osu.Game.Rulesets.Objects
 
             if (ExpectedDistance.Value is double expectedDistance && calculatedLength != expectedDistance)
             {
+                // In osu-stable, if the last two control points of a slider are equal, extension is not performed.
+                if (ControlPoints.Count >= 2 && ControlPoints[^1].Position == ControlPoints[^2].Position && expectedDistance > calculatedLength)
+                {
+                    cumulativeLength.Add(calculatedLength);
+                    return;
+                }
+
                 // The last length is always incorrect
                 cumulativeLength.RemoveAt(cumulativeLength.Count - 1);
 

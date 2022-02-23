@@ -3,14 +3,30 @@
 
 using System.Linq;
 using NUnit.Framework;
+using osu.Framework.Allocation;
+using osu.Framework.Audio;
+using osu.Framework.Extensions;
+using osu.Framework.Platform;
 using osu.Framework.Screens;
 using osu.Framework.Testing;
+using osu.Game.Beatmaps;
+using osu.Game.Online.API;
+using osu.Game.Online.API.Requests.Responses;
+using osu.Game.Online.Multiplayer;
 using osu.Game.Online.Rooms;
+using osu.Game.Overlays.Mods;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Mods;
+using osu.Game.Rulesets.Taiko;
+using osu.Game.Rulesets.Taiko.Mods;
+using osu.Game.Rulesets.UI;
+using osu.Game.Screens.OnlinePlay.Match;
 using osu.Game.Screens.OnlinePlay.Multiplayer;
 using osu.Game.Screens.OnlinePlay.Multiplayer.Match;
+using osu.Game.Screens.OnlinePlay.Multiplayer.Participants;
 using osu.Game.Tests.Beatmaps;
-using osuTK.Input;
+using osu.Game.Tests.Resources;
 
 namespace osu.Game.Tests.Visual.Multiplayer
 {
@@ -18,22 +34,74 @@ namespace osu.Game.Tests.Visual.Multiplayer
     {
         private MultiplayerMatchSubScreen screen;
 
+        private BeatmapManager beatmaps;
+        private RulesetStore rulesets;
+        private BeatmapSetInfo importedSet;
+
         public TestSceneMultiplayerMatchSubScreen()
             : base(false)
         {
         }
 
+        [BackgroundDependencyLoader]
+        private void load(GameHost host, AudioManager audio)
+        {
+            Dependencies.Cache(rulesets = new RulesetStore(Realm));
+            Dependencies.Cache(beatmaps = new BeatmapManager(LocalStorage, Realm, rulesets, null, audio, Resources, host, Beatmap.Default));
+            Dependencies.Cache(Realm);
+
+            beatmaps.Import(TestResources.GetQuickTestBeatmapForImport()).WaitSafely();
+
+            importedSet = beatmaps.GetAllUsableBeatmapSets().First();
+        }
+
         [SetUp]
         public new void Setup() => Schedule(() =>
         {
-            Room.Name.Value = "Test Room";
+            SelectedRoom.Value = new Room { Name = { Value = "Test Room" } };
         });
 
         [SetUpSteps]
         public void SetupSteps()
         {
-            AddStep("load match", () => LoadScreen(screen = new MultiplayerMatchSubScreen(Room)));
+            AddStep("load match", () => LoadScreen(screen = new MultiplayerMatchSubScreen(SelectedRoom.Value)));
             AddUntilStep("wait for load", () => screen.IsCurrentScreen());
+        }
+
+        [Test]
+        public void TestCreatedRoom()
+        {
+            AddStep("add playlist item", () =>
+            {
+                SelectedRoom.Value.Playlist.Add(new PlaylistItem(new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo)
+                {
+                    RulesetID = new OsuRuleset().RulesetInfo.OnlineID
+                });
+            });
+
+            ClickButtonWhenEnabled<MultiplayerMatchSettingsOverlay.CreateOrUpdateButton>();
+
+            AddUntilStep("wait for join", () => RoomJoined);
+        }
+
+        [Test]
+        public void TestTaikoOnlyMod()
+        {
+            AddStep("add playlist item", () =>
+            {
+                SelectedRoom.Value.Playlist.Add(new PlaylistItem(new TestBeatmap(new TaikoRuleset().RulesetInfo).BeatmapInfo)
+                {
+                    RulesetID = new TaikoRuleset().RulesetInfo.OnlineID,
+                    AllowedMods = new[] { new APIMod(new TaikoModSwap()) }
+                });
+            });
+
+            ClickButtonWhenEnabled<MultiplayerMatchSettingsOverlay.CreateOrUpdateButton>();
+
+            AddUntilStep("wait for join", () => RoomJoined);
+
+            AddStep("select swap mod", () => MultiplayerClient.ChangeUserMods(API.LocalUser.Value.OnlineID, new[] { new TaikoModSwap() }));
+            AddUntilStep("participant panel has mod", () => this.ChildrenOfType<ParticipantPanel>().Any(p => p.ChildrenOfType<ModIcon>().Any(m => m.Mod is TaikoModSwap)));
         }
 
         [Test]
@@ -43,10 +111,9 @@ namespace osu.Game.Tests.Visual.Multiplayer
 
             AddStep("set playlist", () =>
             {
-                Room.Playlist.Add(new PlaylistItem
+                SelectedRoom.Value.Playlist.Add(new PlaylistItem(new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo)
                 {
-                    Beatmap = { Value = new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo },
-                    Ruleset = { Value = new OsuRuleset().RulesetInfo },
+                    RulesetID = new OsuRuleset().RulesetInfo.OnlineID
                 });
             });
 
@@ -54,24 +121,55 @@ namespace osu.Game.Tests.Visual.Multiplayer
         }
 
         [Test]
-        public void TestCreatedRoom()
+        public void TestStartMatchWhileSpectating()
         {
             AddStep("set playlist", () =>
             {
-                Room.Playlist.Add(new PlaylistItem
+                SelectedRoom.Value.Playlist.Add(new PlaylistItem(beatmaps.GetWorkingBeatmap(importedSet.Beatmaps.First()).BeatmapInfo)
                 {
-                    Beatmap = { Value = new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo },
-                    Ruleset = { Value = new OsuRuleset().RulesetInfo },
+                    RulesetID = new OsuRuleset().RulesetInfo.OnlineID
                 });
             });
 
-            AddStep("click create button", () =>
+            ClickButtonWhenEnabled<MultiplayerMatchSettingsOverlay.CreateOrUpdateButton>();
+
+            AddUntilStep("wait for room join", () => RoomJoined);
+
+            AddStep("join other user (ready)", () =>
             {
-                InputManager.MoveMouseTo(this.ChildrenOfType<MultiplayerMatchSettingsOverlay.CreateOrUpdateButton>().Single());
-                InputManager.Click(MouseButton.Left);
+                MultiplayerClient.AddUser(new APIUser { Id = PLAYER_1_ID });
+                MultiplayerClient.ChangeUserState(PLAYER_1_ID, MultiplayerUserState.Ready);
             });
 
-            AddWaitStep("wait", 10);
+            ClickButtonWhenEnabled<MultiplayerSpectateButton>();
+
+            AddUntilStep("wait for spectating user state", () => MultiplayerClient.LocalUser?.State == MultiplayerUserState.Spectating);
+
+            ClickButtonWhenEnabled<MultiplayerReadyButton>();
+
+            AddUntilStep("match started", () => MultiplayerClient.Room?.State == MultiplayerRoomState.WaitingForLoad);
+        }
+
+        [Test]
+        public void TestFreeModSelectionHasAllowedMods()
+        {
+            AddStep("add playlist item with allowed mod", () =>
+            {
+                SelectedRoom.Value.Playlist.Add(new PlaylistItem(new TestBeatmap(new OsuRuleset().RulesetInfo).BeatmapInfo)
+                {
+                    RulesetID = new OsuRuleset().RulesetInfo.OnlineID,
+                    AllowedMods = new[] { new APIMod(new OsuModDoubleTime()) }
+                });
+            });
+
+            ClickButtonWhenEnabled<MultiplayerMatchSettingsOverlay.CreateOrUpdateButton>();
+
+            AddUntilStep("wait for join", () => RoomJoined);
+
+            ClickButtonWhenEnabled<RoomSubScreen.UserModSelectButton>();
+
+            AddUntilStep("mod select contains only double time mod",
+                () => this.ChildrenOfType<UserModSelectOverlay>().SingleOrDefault()?.ChildrenOfType<ModButton>().SingleOrDefault()?.Mod is OsuModDoubleTime);
         }
     }
 }

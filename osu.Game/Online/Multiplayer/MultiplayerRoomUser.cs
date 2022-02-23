@@ -6,12 +6,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using JetBrains.Annotations;
 using MessagePack;
 using Newtonsoft.Json;
 using osu.Game.Online.API;
+using osu.Game.Online.API.Requests.Responses;
 using osu.Game.Online.Rooms;
-using osu.Game.Users;
 
 namespace osu.Game.Online.Multiplayer
 {
@@ -25,6 +24,9 @@ namespace osu.Game.Online.Multiplayer
         [Key(1)]
         public MultiplayerUserState State { get; set; } = MultiplayerUserState.Idle;
 
+        [Key(4)]
+        public MatchUserState? MatchState { get; set; }
+
         /// <summary>
         /// The availability state of the current beatmap.
         /// </summary>
@@ -35,11 +37,10 @@ namespace osu.Game.Online.Multiplayer
         /// Any mods applicable only to the local user.
         /// </summary>
         [Key(3)]
-        [NotNull]
         public IEnumerable<APIMod> Mods { get; set; } = Enumerable.Empty<APIMod>();
 
         [IgnoreMember]
-        public User? User { get; set; }
+        public APIUser? User { get; set; }
 
         [JsonConstructor]
         public MultiplayerRoomUser(int userId)
@@ -47,9 +48,10 @@ namespace osu.Game.Online.Multiplayer
             UserID = userId;
         }
 
-        public bool Equals(MultiplayerRoomUser other)
+        public bool Equals(MultiplayerRoomUser? other)
         {
             if (ReferenceEquals(this, other)) return true;
+            if (other == null) return false;
 
             return UserID == other.UserID;
         }

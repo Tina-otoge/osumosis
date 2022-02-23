@@ -3,7 +3,6 @@
 
 using System.Diagnostics;
 using osu.Framework.Allocation;
-using osu.Framework.Bindables;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
@@ -36,6 +35,7 @@ namespace osu.Game.Graphics.UserInterface
 
         public Color4 BackgroundColour
         {
+            get => backgroundColour ?? Color4.White;
             set
             {
                 backgroundColour = value;
@@ -49,7 +49,7 @@ namespace osu.Game.Graphics.UserInterface
         protected Box Background;
         protected SpriteText SpriteText;
 
-        public OsuButton(HoverSampleSet? hoverSounds = HoverSampleSet.Loud)
+        public OsuButton(HoverSampleSet? hoverSounds = HoverSampleSet.Button)
         {
             Height = 40;
 
@@ -84,8 +84,6 @@ namespace osu.Game.Graphics.UserInterface
 
             if (hoverSounds.HasValue)
                 AddInternal(new HoverClickSounds(hoverSounds.Value));
-
-            Enabled.BindValueChanged(enabledChanged, true);
         }
 
         [BackgroundDependencyLoader]
@@ -93,10 +91,17 @@ namespace osu.Game.Graphics.UserInterface
         {
             if (backgroundColour == null)
                 BackgroundColour = colours.BlueDark;
-
-            Enabled.ValueChanged += enabledChanged;
-            Enabled.TriggerChange();
         }
+
+        protected override void LoadComplete()
+        {
+            base.LoadComplete();
+
+            Colour = dimColour;
+            Enabled.BindValueChanged(_ => this.FadeColour(dimColour, 200, Easing.OutQuint));
+        }
+
+        private Color4 dimColour => Enabled.Value ? Color4.White : Color4.Gray;
 
         protected override bool OnClick(ClickEvent e)
         {
@@ -143,10 +148,5 @@ namespace osu.Game.Graphics.UserInterface
             Anchor = Anchor.Centre,
             Font = OsuFont.GetFont(weight: FontWeight.Bold)
         };
-
-        private void enabledChanged(ValueChangedEvent<bool> e)
-        {
-            this.FadeColour(e.NewValue ? Color4.White : Color4.Gray, 200, Easing.OutQuint);
-        }
     }
 }

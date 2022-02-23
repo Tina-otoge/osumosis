@@ -71,7 +71,8 @@ namespace osu.Game.Graphics.UserInterface
             }
         }
 
-        public TwoLayerButton()
+        public TwoLayerButton(HoverSampleSet sampleSet = HoverSampleSet.Default)
+            : base(sampleSet)
         {
             Size = SIZE_RETRACTED;
             Shear = shear;
@@ -235,7 +236,7 @@ namespace osu.Game.Graphics.UserInterface
             {
                 base.OnNewBeat(beatIndex, timingPoint, effectPoint, amplitudes);
 
-                var beatLength = timingPoint.BeatLength;
+                double beatLength = timingPoint.BeatLength;
 
                 float amplitudeAdjust = Math.Min(1, 0.4f + amplitudes.Maximum);
 

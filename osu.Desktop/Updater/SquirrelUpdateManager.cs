@@ -68,6 +68,8 @@ namespace osu.Desktop.Updater
                     return false;
                 }
 
+                scheduleRecheck = false;
+
                 if (notification == null)
                 {
                     notification = new UpdateProgressNotification(this) { State = ProgressNotificationState.Active };
@@ -98,11 +100,13 @@ namespace osu.Desktop.Updater
                         // could fail if deltas are unavailable for full update path (https://github.com/Squirrel/Squirrel.Windows/issues/959)
                         // try again without deltas.
                         await checkForUpdateAsync(false, notification).ConfigureAwait(false);
-                        scheduleRecheck = false;
                     }
                     else
                     {
+                        // In the case of an error, a separate notification will be displayed.
                         notification.State = ProgressNotificationState.Cancelled;
+                        notification.Close();
+
                         Logger.Error(e, @"update failed!");
                     }
                 }
@@ -110,13 +114,14 @@ namespace osu.Desktop.Updater
             catch (Exception)
             {
                 // we'll ignore this and retry later. can be triggered by no internet connection or thread abortion.
+                scheduleRecheck = true;
             }
             finally
             {
                 if (scheduleRecheck)
                 {
                     // check again in 30 minutes.
-                    Scheduler.AddDelayed(async () => await checkForUpdateAsync().ConfigureAwait(false), 60000 * 30);
+                    Scheduler.AddDelayed(() => Task.Run(async () => await checkForUpdateAsync().ConfigureAwait(false)), 60000 * 30);
                 }
             }
 
@@ -141,7 +146,7 @@ namespace osu.Desktop.Updater
                 Activated = () =>
                 {
                     updateManager.PrepareUpdateAsync()
-                                 .ContinueWith(_ => updateManager.Schedule(() => game.GracefullyExit()));
+                                 .ContinueWith(_ => updateManager.Schedule(() => game?.GracefullyExit()));
                     return true;
                 };
             }
@@ -180,6 +185,19 @@ namespace osu.Desktop.Updater
                         Size = new Vector2(20),
                     }
                 });
+            }
+
+            public override void Close()
+            {
+                // cancelling updates is not currently supported by the underlying updater.
+                // only allow dismissing for now.
+
+                switch (State)
+                {
+                    case ProgressNotificationState.Cancelled:
+                        base.Close();
+                        break;
+                }
             }
         }
 

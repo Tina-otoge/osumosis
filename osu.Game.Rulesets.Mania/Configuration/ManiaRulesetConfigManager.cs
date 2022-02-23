@@ -20,20 +20,27 @@ namespace osu.Game.Rulesets.Mania.Configuration
         {
             base.InitialiseDefaults();
 
-            Set(ManiaRulesetSetting.ScrollTime, 1500.0, DrawableManiaRuleset.MIN_TIME_RANGE, DrawableManiaRuleset.MAX_TIME_RANGE, 5);
-            Set(ManiaRulesetSetting.ScrollDirection, ManiaScrollingDirection.Down);
+            SetDefault(ManiaRulesetSetting.ScrollTime, 1500.0, DrawableManiaRuleset.MIN_TIME_RANGE, DrawableManiaRuleset.MAX_TIME_RANGE, 5);
+            SetDefault(ManiaRulesetSetting.ScrollDirection, ManiaScrollingDirection.Down);
+            SetDefault(ManiaRulesetSetting.TimingBasedNoteColouring, false);
         }
 
         public override TrackedSettings CreateTrackedSettings() => new TrackedSettings
         {
             new TrackedSetting<double>(ManiaRulesetSetting.ScrollTime,
-                v => new SettingDescription(v, "Scroll Speed", $"{(int)Math.Round(DrawableManiaRuleset.MAX_TIME_RANGE / v)} ({v}ms)"))
+                scrollTime => new SettingDescription(
+                    rawValue: scrollTime,
+                    name: "Scroll Speed",
+                    value: $"{(int)Math.Round(DrawableManiaRuleset.MAX_TIME_RANGE / scrollTime)} ({scrollTime}ms)"
+                )
+            )
         };
     }
 
     public enum ManiaRulesetSetting
     {
         ScrollTime,
-        ScrollDirection
+        ScrollDirection,
+        TimingBasedNoteColouring
     }
 }

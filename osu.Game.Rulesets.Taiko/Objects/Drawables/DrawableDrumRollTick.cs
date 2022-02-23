@@ -4,6 +4,8 @@
 using System;
 using JetBrains.Annotations;
 using osu.Framework.Graphics;
+using osu.Framework.Input.Events;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Objects.Drawables;
 using osu.Game.Rulesets.Taiko.Skinning.Default;
 using osu.Game.Skinning;
@@ -51,6 +53,14 @@ namespace osu.Game.Rulesets.Taiko.Objects.Drawables
             ApplyResult(r => r.Type = r.Judgement.MaxResult);
         }
 
+        public override void OnKilled()
+        {
+            base.OnKilled();
+
+            if (Time.Current > HitObject.GetEndTime() && !Judged)
+                ApplyResult(r => r.Type = r.Judgement.MinResult);
+        }
+
         protected override void UpdateHitStateTransforms(ArmedState state)
         {
             switch (state)
@@ -61,9 +71,9 @@ namespace osu.Game.Rulesets.Taiko.Objects.Drawables
             }
         }
 
-        public override bool OnPressed(TaikoAction action)
+        public override bool OnPressed(KeyBindingPressEvent<TaikoAction> e)
         {
-            JudgementType = action == TaikoAction.LeftRim || action == TaikoAction.RightRim ? HitType.Rim : HitType.Centre;
+            JudgementType = e.Action == TaikoAction.LeftRim || e.Action == TaikoAction.RightRim ? HitType.Rim : HitType.Centre;
             return UpdateResult(true);
         }
 
@@ -91,7 +101,15 @@ namespace osu.Game.Rulesets.Taiko.Objects.Drawables
                 ApplyResult(r => r.Type = ParentHitObject.IsHit ? r.Judgement.MaxResult : r.Judgement.MinResult);
             }
 
-            public override bool OnPressed(TaikoAction action) => false;
+            public override void OnKilled()
+            {
+                base.OnKilled();
+
+                if (Time.Current > ParentHitObject.HitObject.GetEndTime() && !Judged)
+                    ApplyResult(r => r.Type = r.Judgement.MinResult);
+            }
+
+            public override bool OnPressed(KeyBindingPressEvent<TaikoAction> e) => false;
         }
     }
 }

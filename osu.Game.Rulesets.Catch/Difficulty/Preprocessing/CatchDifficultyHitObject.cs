@@ -24,20 +24,17 @@ namespace osu.Game.Rulesets.Catch.Difficulty.Preprocessing
         /// </summary>
         public readonly double StrainTime;
 
-        public readonly double ClockRate;
-
         public CatchDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, float halfCatcherWidth)
             : base(hitObject, lastObject, clockRate)
         {
             // We will scale everything by this factor, so we can assume a uniform CircleSize among beatmaps.
-            var scalingFactor = normalized_hitobject_radius / halfCatcherWidth;
+            float scalingFactor = normalized_hitobject_radius / halfCatcherWidth;
 
             NormalizedPosition = BaseObject.EffectiveX * scalingFactor;
             LastNormalizedPosition = LastObject.EffectiveX * scalingFactor;
 
             // Every strain interval is hard capped at the equivalent of 375 BPM streaming speed as a safety measure
             StrainTime = Math.Max(40, DeltaTime);
-            ClockRate = clockRate;
         }
     }
 }

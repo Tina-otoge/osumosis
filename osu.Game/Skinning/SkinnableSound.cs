@@ -7,7 +7,6 @@ using System.Linq;
 using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Audio;
-using osu.Framework.Audio.Sample;
 using osu.Framework.Bindables;
 using osu.Framework.Extensions.IEnumerableExtensions;
 using osu.Framework.Graphics;
@@ -42,9 +41,6 @@ namespace osu.Game.Skinning
         protected IEnumerable<DrawableSample> DrawableSamples => samplesContainer.Select(c => c.Sample).Where(s => s != null);
 
         private readonly AudioContainer<PoolableSkinnableSample> samplesContainer;
-
-        [Resolved]
-        private ISampleStore sampleStore { get; set; }
 
         [Resolved(CanBeNull = true)]
         private IPooledSampleProvider samplePool { get; set; }
@@ -131,18 +127,21 @@ namespace osu.Game.Skinning
             });
         }
 
+        protected override void LoadAsyncComplete()
+        {
+            // ensure samples are constructed before SkinChanged() is called via base.LoadAsyncComplete().
+            if (!samplesContainer.Any())
+                updateSamples();
+
+            base.LoadAsyncComplete();
+        }
+
         /// <summary>
         /// Stops the samples.
         /// </summary>
         public virtual void Stop()
         {
             samplesContainer.ForEach(c => c.Stop());
-        }
-
-        protected override void SkinChanged(ISkinSource skin, bool allowFallback)
-        {
-            base.SkinChanged(skin, allowFallback);
-            updateSamples();
         }
 
         private void updateSamples()
@@ -176,24 +175,15 @@ namespace osu.Game.Skinning
 
         public BindableNumber<double> Tempo => samplesContainer.Tempo;
 
-        public void BindAdjustments(IAggregateAudioAdjustment component)
-        {
-            samplesContainer.BindAdjustments(component);
-        }
+        public void BindAdjustments(IAggregateAudioAdjustment component) => samplesContainer.BindAdjustments(component);
 
-        public void UnbindAdjustments(IAggregateAudioAdjustment component)
-        {
-            samplesContainer.UnbindAdjustments(component);
-        }
+        public void UnbindAdjustments(IAggregateAudioAdjustment component) => samplesContainer.UnbindAdjustments(component);
 
-        public void AddAdjustment(AdjustableProperty type, IBindable<double> adjustBindable)
-            => samplesContainer.AddAdjustment(type, adjustBindable);
+        public void AddAdjustment(AdjustableProperty type, IBindable<double> adjustBindable) => samplesContainer.AddAdjustment(type, adjustBindable);
 
-        public void RemoveAdjustment(AdjustableProperty type, IBindable<double> adjustBindable)
-            => samplesContainer.RemoveAdjustment(type, adjustBindable);
+        public void RemoveAdjustment(AdjustableProperty type, IBindable<double> adjustBindable) => samplesContainer.RemoveAdjustment(type, adjustBindable);
 
-        public void RemoveAllAdjustments(AdjustableProperty type)
-            => samplesContainer.RemoveAllAdjustments(type);
+        public void RemoveAllAdjustments(AdjustableProperty type) => samplesContainer.RemoveAllAdjustments(type);
 
         /// <summary>
         /// Whether any samples are currently playing.

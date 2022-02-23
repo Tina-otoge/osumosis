@@ -11,6 +11,7 @@ using osu.Framework.Audio.Track;
 using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
 using osu.Game.IO;
+using osu.Game.Skinning;
 using Decoder = osu.Game.Beatmaps.Formats.Decoder;
 
 namespace osu.Game.Screens.Edit
@@ -81,7 +82,7 @@ namespace osu.Game.Screens.Edit
             if (toAdd.Count > 0)
             {
                 IBeatmap newBeatmap = readBeatmap(newState);
-                foreach (var i in toAdd)
+                foreach (int i in toAdd)
                     editorBeatmap.Insert(i, newBeatmap.HitObjects[i]);
             }
 
@@ -116,6 +117,10 @@ namespace osu.Game.Screens.Edit
             protected override Texture GetBackground() => throw new NotImplementedException();
 
             protected override Track GetBeatmapTrack() => throw new NotImplementedException();
+
+            protected internal override ISkin GetSkin() => throw new NotImplementedException();
+
+            public override Stream GetStream(string storagePath) => throw new NotImplementedException();
         }
     }
 }

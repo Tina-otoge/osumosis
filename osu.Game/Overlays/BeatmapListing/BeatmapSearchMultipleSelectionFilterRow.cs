@@ -4,11 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using osu.Framework.Allocation;
 using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.Containers;
 using osu.Framework.Input.Events;
+using osu.Framework.Localisation;
 using osuTK;
 
 namespace osu.Game.Overlays.BeatmapListing
@@ -19,8 +21,13 @@ namespace osu.Game.Overlays.BeatmapListing
 
         private MultipleSelectionFilter filter;
 
-        public BeatmapSearchMultipleSelectionFilterRow(string headerName)
-            : base(headerName)
+        public BeatmapSearchMultipleSelectionFilterRow(LocalisableString header)
+            : base(header)
+        {
+        }
+
+        [BackgroundDependencyLoader]
+        private void load()
         {
             Current.BindTo(filter.Current);
         }
@@ -30,6 +37,7 @@ namespace osu.Game.Overlays.BeatmapListing
         /// <summary>
         /// Creates a filter control that can be used to simultaneously select multiple values of type <typeparamref name="T"/>.
         /// </summary>
+        [NotNull]
         protected virtual MultipleSelectionFilter CreateMultipleSelectionFilter() => new MultipleSelectionFilter();
 
         protected class MultipleSelectionFilter : FillFlowContainer<MultipleSelectionFilterTabItem>

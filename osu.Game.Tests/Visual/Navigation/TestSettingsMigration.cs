@@ -9,14 +9,17 @@ namespace osu.Game.Tests.Visual.Navigation
 {
     public class TestSettingsMigration : OsuGameTestScene
     {
-        public override void RecycleLocalStorage()
+        public override void RecycleLocalStorage(bool isDisposing)
         {
-            base.RecycleLocalStorage();
+            base.RecycleLocalStorage(isDisposing);
+
+            if (isDisposing)
+                return;
 
             using (var config = new OsuConfigManager(LocalStorage))
             {
-                config.Set(OsuSetting.Version, "2020.101.0");
-                config.Set(OsuSetting.DisplayStarsMaximum, 10.0);
+                config.SetValue(OsuSetting.Version, "2020.101.0");
+                config.SetValue(OsuSetting.DisplayStarsMaximum, 10.0);
             }
         }
 
@@ -25,7 +28,7 @@ namespace osu.Game.Tests.Visual.Navigation
         {
             AddAssert("config has migrated value", () => Precision.AlmostEquals(Game.LocalConfig.Get<double>(OsuSetting.DisplayStarsMaximum), 10.1));
 
-            AddStep("set value again", () => Game.LocalConfig.Set<double>(OsuSetting.DisplayStarsMaximum, 10));
+            AddStep("set value again", () => Game.LocalConfig.SetValue(OsuSetting.DisplayStarsMaximum, 10.0));
 
             AddStep("force save config", () => Game.LocalConfig.Save());
 

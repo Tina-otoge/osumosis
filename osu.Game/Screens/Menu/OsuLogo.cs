@@ -72,8 +72,6 @@ namespace osu.Game.Screens.Menu
             set => colourAndTriangles.FadeTo(value ? 1 : 0, transition_length, Easing.OutQuint);
         }
 
-        public bool BeatMatching = true;
-
         public override bool ReceivePositionalInputAt(Vector2 screenSpacePos) => logoContainer.ReceivePositionalInputAt(screenSpacePos);
 
         public bool Ripple
@@ -272,11 +270,9 @@ namespace osu.Game.Screens.Menu
         {
             base.OnNewBeat(beatIndex, timingPoint, effectPoint, amplitudes);
 
-            if (!BeatMatching) return;
-
             lastBeatIndex = beatIndex;
 
-            var beatLength = timingPoint.BeatLength;
+            double beatLength = timingPoint.BeatLength;
 
             float amplitudeAdjust = Math.Min(1, 0.4f + amplitudes.Maximum);
 
@@ -286,7 +282,7 @@ namespace osu.Game.Screens.Menu
             {
                 this.Delay(early_activation).Schedule(() =>
                 {
-                    if (beatIndex % (int)timingPoint.TimeSignature == 0)
+                    if (beatIndex % timingPoint.TimeSignature.Numerator == 0)
                         sampleDownbeat.Play();
                     else
                         sampleBeat.Play();
@@ -341,7 +337,7 @@ namespace osu.Game.Screens.Menu
 
             if (musicController.CurrentTrack.IsRunning)
             {
-                var maxAmplitude = lastBeatIndex >= 0 ? musicController.CurrentTrack.CurrentAmplitudes.Maximum : 0;
+                float maxAmplitude = lastBeatIndex >= 0 ? musicController.CurrentTrack.CurrentAmplitudes.Maximum : 0;
                 logoAmplitudeContainer.Scale = new Vector2((float)Interpolation.Damp(logoAmplitudeContainer.Scale.X, 1 - Math.Max(0, maxAmplitude - scale_adjust_cutoff) * 0.04f, 0.9f, Time.Elapsed));
 
                 if (maxAmplitude > velocity_adjust_cutoff)

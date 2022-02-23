@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Framework.Extensions;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -33,28 +32,22 @@ namespace osu.Game.Rulesets.Mania.Difficulty
         {
         }
 
-        public override double Calculate(Dictionary<string, double> categoryDifficulty = null)
+        public override PerformanceAttributes Calculate()
         {
             mods = Score.Mods;
             scaledScore = Score.TotalScore;
-            countPerfect = Score.Statistics.GetOrDefault(HitResult.Perfect);
-            countGreat = Score.Statistics.GetOrDefault(HitResult.Great);
-            countGood = Score.Statistics.GetOrDefault(HitResult.Good);
-            countOk = Score.Statistics.GetOrDefault(HitResult.Ok);
-            countMeh = Score.Statistics.GetOrDefault(HitResult.Meh);
-            countMiss = Score.Statistics.GetOrDefault(HitResult.Miss);
+            countPerfect = Score.Statistics.GetValueOrDefault(HitResult.Perfect);
+            countGreat = Score.Statistics.GetValueOrDefault(HitResult.Great);
+            countGood = Score.Statistics.GetValueOrDefault(HitResult.Good);
+            countOk = Score.Statistics.GetValueOrDefault(HitResult.Ok);
+            countMeh = Score.Statistics.GetValueOrDefault(HitResult.Meh);
+            countMiss = Score.Statistics.GetValueOrDefault(HitResult.Miss);
 
-            if (mods.Any(m => !m.Ranked))
-                return 0;
-
-            IEnumerable<Mod> scoreIncreaseMods = Ruleset.GetModsFor(ModType.DifficultyIncrease);
-
-            double scoreMultiplier = 1.0;
-            foreach (var m in mods.Where(m => !scoreIncreaseMods.Contains(m)))
-                scoreMultiplier *= m.ScoreMultiplier;
-
-            // Scale score up, so it's comparable to other keymods
-            scaledScore *= 1.0 / scoreMultiplier;
+            if (Attributes.ScoreMultiplier > 0)
+            {
+                // Scale score up, so it's comparable to other keymods
+                scaledScore *= 1.0 / Attributes.ScoreMultiplier;
+            }
 
             // Arbitrary initial value for scaling pp in order to standardize distributions across game modes.
             // The specific number has no intrinsic meaning and can be adjusted as needed.
@@ -65,48 +58,46 @@ namespace osu.Game.Rulesets.Mania.Difficulty
             if (mods.Any(m => m is ModEasy))
                 multiplier *= 0.5;
 
-            double strainValue = computeStrainValue();
-            double accValue = computeAccuracyValue(strainValue);
+            double difficultyValue = computeDifficultyValue();
+            double accValue = computeAccuracyValue(difficultyValue);
             double totalValue =
                 Math.Pow(
-                    Math.Pow(strainValue, 1.1) +
+                    Math.Pow(difficultyValue, 1.1) +
                     Math.Pow(accValue, 1.1), 1.0 / 1.1
                 ) * multiplier;
 
-            if (categoryDifficulty != null)
+            return new ManiaPerformanceAttributes
             {
-                categoryDifficulty["Strain"] = strainValue;
-                categoryDifficulty["Accuracy"] = accValue;
-            }
-
-            return totalValue;
+                Difficulty = difficultyValue,
+                Accuracy = accValue,
+                ScaledScore = scaledScore,
+                Total = totalValue
+            };
         }
 
-        private double computeStrainValue()
+        private double computeDifficultyValue()
         {
-            // Obtain strain difficulty
-            double strainValue = Math.Pow(5 * Math.Max(1, Attributes.StarRating / 0.2) - 4.0, 2.2) / 135.0;
+            double difficultyValue = Math.Pow(5 * Math.Max(1, Attributes.StarRating / 0.2) - 4.0, 2.2) / 135.0;
 
-            // Longer maps are worth more
-            strainValue *= 1.0 + 0.1 * Math.Min(1.0, totalHits / 1500.0);
+            difficultyValue *= 1.0 + 0.1 * Math.Min(1.0, totalHits / 1500.0);
 
             if (scaledScore <= 500000)
-                strainValue = 0;
+                difficultyValue = 0;
             else if (scaledScore <= 600000)
-                strainValue *= (scaledScore - 500000) / 100000 * 0.3;
+                difficultyValue *= (scaledScore - 500000) / 100000 * 0.3;
             else if (scaledScore <= 700000)
-                strainValue *= 0.3 + (scaledScore - 600000) / 100000 * 0.25;
+                difficultyValue *= 0.3 + (scaledScore - 600000) / 100000 * 0.25;
             else if (scaledScore <= 800000)
-                strainValue *= 0.55 + (scaledScore - 700000) / 100000 * 0.20;
+                difficultyValue *= 0.55 + (scaledScore - 700000) / 100000 * 0.20;
             else if (scaledScore <= 900000)
-                strainValue *= 0.75 + (scaledScore - 800000) / 100000 * 0.15;
+                difficultyValue *= 0.75 + (scaledScore - 800000) / 100000 * 0.15;
             else
-                strainValue *= 0.90 + (scaledScore - 900000) / 100000 * 0.1;
+                difficultyValue *= 0.90 + (scaledScore - 900000) / 100000 * 0.1;
 
-            return strainValue;
+            return difficultyValue;
         }
 
-        private double computeAccuracyValue(double strainValue)
+        private double computeAccuracyValue(double difficultyValue)
         {
             if (Attributes.GreatHitWindow <= 0)
                 return 0;
@@ -114,11 +105,8 @@ namespace osu.Game.Rulesets.Mania.Difficulty
             // Lots of arbitrary values from testing.
             // Considering to use derivation from perfect accuracy in a probabilistic manner - assume normal distribution
             double accuracyValue = Math.Max(0.0, 0.2 - (Attributes.GreatHitWindow - 34) * 0.006667)
-                                   * strainValue
+                                   * difficultyValue
                                    * Math.Pow(Math.Max(0.0, scaledScore - 960000) / 40000, 1.1);
-
-            // Bonus for many hitcircles - it's harder to keep good accuracy up for longer
-            // accuracyValue *= Math.Min(1.15, Math.Pow(totalHits / 1500.0, 0.3));
 
             return accuracyValue;
         }

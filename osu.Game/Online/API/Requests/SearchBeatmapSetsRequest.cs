@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Humanizer;
 using JetBrains.Annotations;
 using osu.Framework.IO.Network;
 using osu.Game.Extensions;
@@ -15,6 +16,9 @@ namespace osu.Game.Online.API.Requests
 {
     public class SearchBeatmapSetsRequest : APIRequest<SearchBeatmapSetsResponse>
     {
+        [CanBeNull]
+        public IReadOnlyCollection<SearchGeneral> General { get; }
+
         public SearchCategory SearchCategory { get; }
 
         public SortCriteria SortCriteria { get; }
@@ -45,6 +49,7 @@ namespace osu.Game.Online.API.Requests
             string query,
             RulesetInfo ruleset,
             Cursor cursor = null,
+            IReadOnlyCollection<SearchGeneral> general = null,
             SearchCategory searchCategory = SearchCategory.Any,
             SortCriteria sortCriteria = SortCriteria.Ranked,
             SortDirection sortDirection = SortDirection.Descending,
@@ -55,10 +60,11 @@ namespace osu.Game.Online.API.Requests
             SearchPlayed played = SearchPlayed.Any,
             SearchExplicit explicitContent = SearchExplicit.Hide)
         {
-            this.query = string.IsNullOrEmpty(query) ? string.Empty : System.Uri.EscapeDataString(query);
+            this.query = query;
             this.ruleset = ruleset;
             this.cursor = cursor;
 
+            General = general;
             SearchCategory = searchCategory;
             SortCriteria = sortCriteria;
             SortDirection = sortDirection;
@@ -73,10 +79,15 @@ namespace osu.Game.Online.API.Requests
         protected override WebRequest CreateWebRequest()
         {
             var req = base.CreateWebRequest();
-            req.AddParameter("q", query);
 
-            if (ruleset.ID.HasValue)
-                req.AddParameter("m", ruleset.ID.Value.ToString());
+            if (query != null)
+                req.AddParameter("q", query);
+
+            if (General != null && General.Any())
+                req.AddParameter("c", string.Join('.', General.Select(e => e.ToString().Underscore())));
+
+            if (ruleset.OnlineID >= 0)
+                req.AddParameter("m", ruleset.OnlineID.ToString());
 
             req.AddParameter("s", SearchCategory.ToString().ToLowerInvariant());
 

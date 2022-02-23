@@ -5,14 +5,15 @@ namespace osu.Game.Rulesets.Osu.Skinning
 {
     public enum OsuSkinConfiguration
     {
-        HitCirclePrefix,
-        HitCircleOverlap,
         SliderBorderSize,
         SliderPathRadius,
         AllowSliderBallTint,
+        CursorCentre,
         CursorExpand,
         CursorRotate,
         HitCircleOverlayAboveNumber,
+
+        // ReSharper disable once IdentifierTypo
         HitCircleOverlayAboveNumer, // Some old skins will have this typo
         SpinnerFrequencyModulate,
         SpinnerNoBlink

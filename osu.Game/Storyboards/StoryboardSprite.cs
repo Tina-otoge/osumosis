@@ -1,17 +1,17 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using osuTK;
-using osu.Framework.Graphics;
-using osu.Game.Storyboards.Drawables;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using osu.Framework.Graphics;
+using osu.Game.Storyboards.Drawables;
+using osuTK;
 
 namespace osu.Game.Storyboards
 {
-    public class StoryboardSprite : IStoryboardElement
+    public class StoryboardSprite : IStoryboardElementWithDuration
     {
         private readonly List<CommandLoop> loops = new List<CommandLoop>();
         private readonly List<CommandTrigger> triggers = new List<CommandTrigger>();
@@ -33,10 +33,8 @@ namespace osu.Game.Storyboards
 
                 foreach (var l in loops)
                 {
-                    if (!(l.EarliestDisplayedTime is double lEarliest))
-                        continue;
-
-                    earliestStartTime = Math.Min(earliestStartTime, lEarliest);
+                    if (l.EarliestDisplayedTime is double loopEarliestDisplayTime)
+                        earliestStartTime = Math.Min(earliestStartTime, l.LoopStartTime + loopEarliestDisplayTime);
                 }
 
                 if (earliestStartTime < double.MaxValue)
@@ -78,9 +76,9 @@ namespace osu.Game.Storyboards
             InitialPosition = initialPosition;
         }
 
-        public CommandLoop AddLoop(double startTime, int loopCount)
+        public CommandLoop AddLoop(double startTime, int repeatCount)
         {
-            var loop = new CommandLoop(startTime, loopCount);
+            var loop = new CommandLoop(startTime, repeatCount);
             loops.Add(loop);
             return loop;
         }

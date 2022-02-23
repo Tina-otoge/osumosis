@@ -113,7 +113,7 @@ namespace osu.Game.Screens.Select.Carousel
                     RelativeSizeAxes = Axes.Both,
                 };
 
-                sampleHover = audio.Samples.Get("SongSelect/song-ping");
+                sampleHover = audio.Samples.Get("UI/default-hover");
             }
 
             public bool InsetForBorder
@@ -152,7 +152,7 @@ namespace osu.Game.Screens.Select.Carousel
             {
                 if (sampleHover == null) return;
 
-                sampleHover.Frequency.Value = 0.90 + RNG.NextDouble(0.2);
+                sampleHover.Frequency.Value = 0.99 + RNG.NextDouble(0.02);
                 sampleHover.Play();
             }
         }

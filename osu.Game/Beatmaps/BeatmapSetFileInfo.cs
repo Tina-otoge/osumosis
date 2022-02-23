@@ -7,11 +7,15 @@ using osu.Game.IO;
 
 namespace osu.Game.Beatmaps
 {
-    public class BeatmapSetFileInfo : INamedFileInfo, IHasPrimaryKey
+    public class BeatmapSetFileInfo : INamedFileInfo, IHasPrimaryKey, INamedFileUsage
     {
         public int ID { get; set; }
 
+        public bool IsManaged => ID > 0;
+
         public int BeatmapSetInfoID { get; set; }
+
+        public EFBeatmapSetInfo BeatmapSetInfo { get; set; }
 
         public int FileInfoID { get; set; }
 
@@ -19,5 +23,7 @@ namespace osu.Game.Beatmaps
 
         [Required]
         public string Filename { get; set; }
+
+        IFileInfo INamedFileUsage.File => FileInfo;
     }
 }

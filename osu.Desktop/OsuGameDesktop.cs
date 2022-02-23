@@ -2,35 +2,31 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Microsoft.Win32;
-using osu.Desktop.Overlays;
+using osu.Desktop.Security;
 using osu.Framework.Platform;
 using osu.Game;
 using osu.Desktop.Updater;
 using osu.Framework;
 using osu.Framework.Logging;
-using osu.Framework.Screens;
-using osu.Game.Screens.Menu;
 using osu.Game.Updater;
 using osu.Desktop.Windows;
+using osu.Framework.Threading;
 using osu.Game.IO;
 
 namespace osu.Desktop
 {
     internal class OsuGameDesktop : OsuGame
     {
-        private readonly bool noVersionOverlay;
-        private VersionManager versionManager;
-
         public OsuGameDesktop(string[] args = null)
             : base(args)
         {
-            noVersionOverlay = args?.Any(a => a == "--no-version-overlay") ?? false;
         }
 
         public override StableStorage GetStorageForStableInstall()
@@ -54,7 +50,7 @@ namespace osu.Desktop
 
         private string getStableInstallPath()
         {
-            static bool checkExists(string p) => Directory.Exists(Path.Combine(p, "Songs"));
+            static bool checkExists(string p) => Directory.Exists(Path.Combine(p, "Songs")) || File.Exists(Path.Combine(p, "osu!.cfg"));
 
             string stableInstallPath;
 
@@ -67,7 +63,9 @@ namespace osu.Desktop
                     if (!string.IsNullOrEmpty(stableInstallPath) && checkExists(stableInstallPath))
                         return stableInstallPath;
                 }
-                catch { }
+                catch
+                {
+                }
             }
 
             stableInstallPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"osu!");
@@ -90,6 +88,11 @@ namespace osu.Desktop
 
         protected override UpdateManager CreateUpdateManager()
         {
+            string packageManaged = Environment.GetEnvironmentVariable("OSU_EXTERNAL_UPDATE_PROVIDER");
+
+            if (!string.IsNullOrEmpty(packageManaged))
+                return new NoActionUpdateManager();
+
             switch (RuntimeInfo.OS)
             {
                 case RuntimeInfo.Platform.Windows:
@@ -104,30 +107,12 @@ namespace osu.Desktop
         {
             base.LoadComplete();
 
-            if (!noVersionOverlay)
-                LoadComponentAsync(versionManager = new VersionManager { Depth = int.MinValue }, Add);
-
             LoadComponentAsync(new DiscordRichPresence(), Add);
 
             if (RuntimeInfo.OS == RuntimeInfo.Platform.Windows)
                 LoadComponentAsync(new GameplayWinKeyBlocker(), Add);
-        }
 
-        protected override void ScreenChanged(IScreen lastScreen, IScreen newScreen)
-        {
-            base.ScreenChanged(lastScreen, newScreen);
-
-            switch (newScreen)
-            {
-                case IntroScreen _:
-                case MainMenu _:
-                    versionManager?.Show();
-                    break;
-
-                default:
-                    versionManager?.Hide();
-                    break;
-            }
+            LoadComponentAsync(new ElevatedPrivilegesChecker(), Add);
         }
 
         public override void SetHost(GameHost host)
@@ -136,33 +121,47 @@ namespace osu.Desktop
 
             var iconStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(GetType(), "lazer.ico");
 
-            switch (host.Window)
-            {
-                // Legacy osuTK DesktopGameWindow
-                case OsuTKDesktopWindow desktopGameWindow:
-                    desktopGameWindow.CursorState |= CursorState.Hidden;
-                    desktopGameWindow.SetIconFromStream(iconStream);
-                    desktopGameWindow.Title = Name;
-                    desktopGameWindow.FileDrop += (_, e) => fileDrop(e.FileNames);
-                    break;
+            var desktopWindow = (SDL2DesktopWindow)host.Window;
 
-                // SDL2 DesktopWindow
-                case SDL2DesktopWindow desktopWindow:
-                    desktopWindow.CursorState |= CursorState.Hidden;
-                    desktopWindow.SetIconFromStream(iconStream);
-                    desktopWindow.Title = Name;
-                    desktopWindow.DragDrop += f => fileDrop(new[] { f });
-                    break;
-            }
+            desktopWindow.CursorState |= CursorState.Hidden;
+            desktopWindow.SetIconFromStream(iconStream);
+            desktopWindow.Title = Name;
+            desktopWindow.DragDrop += f => fileDrop(new[] { f });
         }
+
+        private readonly List<string> importableFiles = new List<string>();
+        private ScheduledDelegate importSchedule;
 
         private void fileDrop(string[] filePaths)
         {
-            var firstExtension = Path.GetExtension(filePaths.First());
+            lock (importableFiles)
+            {
+                string firstExtension = Path.GetExtension(filePaths.First());
 
-            if (filePaths.Any(f => Path.GetExtension(f) != firstExtension)) return;
+                if (filePaths.Any(f => Path.GetExtension(f) != firstExtension)) return;
 
-            Task.Factory.StartNew(() => Import(filePaths), TaskCreationOptions.LongRunning);
+                importableFiles.AddRange(filePaths);
+
+                Logger.Log($"Adding {filePaths.Length} files for import");
+
+                // File drag drop operations can potentially trigger hundreds or thousands of these calls on some platforms.
+                // In order to avoid spawning multiple import tasks for a single drop operation, debounce a touch.
+                importSchedule?.Cancel();
+                importSchedule = Scheduler.AddDelayed(handlePendingImports, 100);
+            }
+        }
+
+        private void handlePendingImports()
+        {
+            lock (importableFiles)
+            {
+                Logger.Log($"Handling batch import of {importableFiles.Count} files");
+
+                string[] paths = importableFiles.ToArray();
+                importableFiles.Clear();
+
+                Task.Factory.StartNew(() => Import(paths), TaskCreationOptions.LongRunning);
+            }
         }
     }
 }
